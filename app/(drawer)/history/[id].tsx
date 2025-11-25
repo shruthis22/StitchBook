@@ -12,19 +12,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 export default function BillDetailsScreen() {
+
   const { id } = useLocalSearchParams();
   const router = useRouter();
   
-  // Find bill from Redux
+  
   const bill = useSelector((state: RootState) => 
     state.billing.bills.find(b => b.id === id)
   );
 
   if (!bill) return <View style={styles.safeArea}><Text>Bill not found</Text></View>;
 
+
+
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
+
+
+      
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
@@ -33,10 +39,13 @@ export default function BillDetailsScreen() {
         <View style={{width: 24}} />
       </View>
 
+
+
       <ScrollView contentContainerStyle={styles.content}>
         
         {/* Invoice Meta */}
         <View style={styles.card}>
+
           <Text style={styles.invoiceId}>Bill ID: {bill.id}</Text>
           <Text style={styles.invoiceDate}>Date: {bill.date}</Text>
 
@@ -57,8 +66,12 @@ export default function BillDetailsScreen() {
           </View>
         </View>
 
+
+
+
         {/* Items Table */}
         <View style={styles.card}>
+
           <Text style={styles.sectionTitle}>Item Details</Text>
           <View style={styles.tableHeader}>
             <Text style={[styles.th, { flex: 2 }]}>Item</Text>
@@ -69,6 +82,7 @@ export default function BillDetailsScreen() {
           
           {bill.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
+
               <Text style={[styles.td, { flex: 2 }]}>{item.name}</Text>
               <Text style={[styles.td, { flex: 0.5, textAlign: 'center' }]}>{item.qty}</Text>
               <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{item.rate.toFixed(2)}</Text>
@@ -88,36 +102,49 @@ export default function BillDetailsScreen() {
 
           <View style={styles.divider} />
 
+
           {/* Totals */}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>${bill.subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>₹{bill.subtotal.toFixed(2)}</Text>
           </View>
+
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Tax (5%)</Text>
-            <Text style={styles.totalValue}>${bill.tax.toFixed(2)}</Text>
+            <Text style={styles.totalLabel}>Tax</Text>
+            <Text style={styles.totalValue}>₹{bill.tax.toFixed(2)}</Text>
           </View>
+
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Discount</Text>
-            <Text style={styles.totalValue}>-${bill.discount.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>-₹{bill.discount.toFixed(2)}</Text>
           </View>
+
           <View style={[styles.totalRow, { marginTop: 8 }]}>
             <Text style={styles.grandTotalLabel}>Grand Total</Text>
-            <Text style={styles.grandTotalValue}>${bill.grandTotal.toFixed(2)}</Text>
+            <Text style={styles.grandTotalValue}>₹{bill.grandTotal.toFixed(2)}</Text>
           </View>
+
         </View>
 
-        {/* Buttons */}
+        
+
+
         <View style={styles.buttonContainer}>
+
           <TouchableOpacity style={styles.outlineButton}>
             <Ionicons name="print" size={20} color="#3B82F6" style={{marginRight: 8}}/>
             <Text style={styles.outlineButtonText}>Print</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity style={styles.fillButton}>
             <Ionicons name="share-social" size={20} color="#FFF" style={{marginRight: 8}}/>
             <Text style={styles.fillButtonText}>Share</Text>
           </TouchableOpacity>
+          
         </View>
+
+
+
       </ScrollView>
     </SafeAreaView>
   );

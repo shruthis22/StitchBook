@@ -1,38 +1,40 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TextInput, 
-  TouchableOpacity, 
-  
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Platform,
   KeyboardAvoidingView,
   Alert,
   Modal,
-  FlatList
+  FlatList,
+  Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState,} from '../../../redux/store'; 
-import {addBill, Product} from "../../../redux/billSlice";
+import { RootState, } from '../../../redux/store';
+import { addBill, Product } from "../../../redux/billSlice";
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 export default function BillingScreen() {
+
+
   const navigation = useNavigation();
   const dispatch = useDispatch();
 
-  // --- Redux Data ---
+
   const availableProducts = useSelector((state: RootState) => state.billing.products);
 
-  // --- Local State for Inputs ---
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  const [productName, setProductName] = useState("");
   const [qty, setQty] = useState('1');
   const [rate, setRate] = useState('');
-  
+
   const [labourName, setLabourName] = useState('');
   const [labourCost, setLabourCost] = useState('');
 
@@ -40,33 +42,57 @@ export default function BillingScreen() {
   const [phone, setPhone] = useState('');
   const [vehicle, setVehicle] = useState('');
 
-  const [modalVisible, setModalVisible] = useState(false);
+  
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
-  // --- Cart State ---
+
+
+
+  
   const [cartItems, setCartItems] = useState<Array<{
-    id: string; 
-    name: string; 
-    qty: number; 
-    rate: number; 
+    id: string;
+    name: string;
+    qty: number;
+    rate: number;
     amount: number;
     type: 'product' | 'labour'
   }>>([]);
 
-  // --- Calculations ---
+
+
+
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.amount, 0), [cartItems]);
-  const tax = subtotal * 0.05; // 5% Tax
+  const tax = subtotal * 0; // 0% Tax
   const grandTotal = subtotal + tax;
 
-  // --- Actions ---
-
-  const handleSelectProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setRate(product.price); // Auto-fill price from Redux
-    setModalVisible(false);
+  // --- NEW: Function to handle typing in product box
+  const handleSearchProduct = (text: string) => {
+    setProductName(text);
+    if (text.length > 0) {
+      const filtered = availableProducts.filter(p => 
+        p.name.toLowerCase().includes(text.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
   };
 
+  // --- NEW: Function when user clicks a suggestion
+  const handleSelectProduct = (product: Product) => {
+    setProductName(product.name);
+    setRate(product.price);
+    setShowDropdown(false);
+    Keyboard.dismiss(); // Hide keyboard
+  };
+
+ 
+
   const handleAddItem = () => {
-    if (!selectedProduct) {
+
+    if (!productName) {
       Alert.alert('Missing Info', 'Please select a product');
       return;
     }
@@ -80,7 +106,7 @@ export default function BillingScreen() {
 
     const newItem = {
       id: Date.now().toString(),
-      name: selectedProduct.name,
+      name: productName,
       qty: quantity,
       rate: unitPrice,
       amount: quantity * unitPrice,
@@ -88,16 +114,17 @@ export default function BillingScreen() {
     };
 
     setCartItems([...cartItems, newItem]);
-    
+
     // Reset fields
-    setSelectedProduct(null);
+    setProductName("");
     setQty('1');
     setRate('');
   };
 
   const handleAddLabour = () => {
+
     if (!labourName || !labourCost) return;
-    
+
     const cost = parseFloat(labourCost) || 0;
     const newItem = {
       id: Date.now().toString(),
@@ -113,22 +140,32 @@ export default function BillingScreen() {
     setLabourCost('');
   };
 
+
+
+
   const handleRemoveItem = (id: string) => {
     setCartItems(cartItems.filter(item => item.id !== id));
   };
 
+
+
+
+
   const handlePrintBill = () => {
+
+
     if (cartItems.length === 0) {
       Alert.alert('Empty Bill', 'Please add items before printing.');
       return;
     }
 
     if (!customerName) {
-        Alert.alert('Missing Info', 'Please enter customer name.');
-        return;
+      Alert.alert('Missing Info', 'Please enter customer name.');
+      return;
     }
 
     const newBill = {
+
       id: `#INV-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName,
       vehicleNumber: vehicle || 'N/A',
@@ -141,81 +178,123 @@ export default function BillingScreen() {
       discount: 0,
       grandTotal,
       items: cartItems
+
     };
 
     dispatch(addBill(newBill));
-    
+
     Alert.alert('Success', 'Bill generated and saved to history!', [
-      { text: 'OK', onPress: () => {
+      {
+        text: 'OK', onPress: () => {
           // Reset Form
           setCartItems([]);
           setCustomerName('');
           setPhone('');
           setVehicle('');
-      }}
+        }
+      }
     ]);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        
+
         <View style={styles.cardMenu}>
 
-            <View style={styles.headerRow}>
+          <View style={styles.headerRow}>
 
-              <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
-                <Ionicons name="menu" size={24} color="#333" />
-              </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+              <Ionicons name="menu" size={24} color="#333" />
+            </TouchableOpacity>
 
-              <Text style={styles.cardTitle}>Billing Home</Text>
+            <Text style={styles.cardTitle}>Billing Home</Text>
 
-              <TouchableOpacity>
-                <Ionicons name="time-outline" size={24} color="#333" />
-              </TouchableOpacity>
-
-            </View>
+            <TouchableOpacity>
+              <Ionicons name="time-outline" size={24} color="#333" />
+            </TouchableOpacity>
 
           </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
-         
-          
+        </View>
 
-          {/* Card 2: Add Products */}
-          <View style={styles.card}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"  
+        >
+
+
+
+
+          
+          <View style={[styles.card, { zIndex: 10 }]}>
+
             <Text style={styles.sectionTitle}>Add Products</Text>
-            
+
             <Text style={styles.label}>Product Name</Text>
-            <TouchableOpacity 
-              style={styles.dropdownInput}
-              onPress={() => setModalVisible(true)}
-            >
-              <Text style={[styles.placeholderText, selectedProduct && { color: '#000' }]}>
-                {selectedProduct ? selectedProduct.name : "Select a product"}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#999" />
-            </TouchableOpacity>
+
+            {/* --- NEW: Autocomplete Container Area */}
+            <View style={styles.autocompleteContainer}>
+                <TextInput 
+                    style={styles.input} 
+                    placeholder="Type product name..."
+                    placeholderTextColor="#999"
+                    value={productName}
+                    onChangeText={handleSearchProduct} // Call search logic
+                    onFocus={() => {
+                        if(productName) setShowDropdown(true);
+                    }}
+                />
+                
+                {/* --- NEW: The Dropdown List (Only shows when showDropdown is true) */}
+                {showDropdown && (
+                    <View style={styles.dropdownList}>
+                        {filteredProducts.length === 0 ? (
+                            <View style={styles.noResult}>
+                                <Text style={{color: '#999'}}>No matches. Use as custom item.</Text>
+                            </View>
+                        ) : (
+                            filteredProducts.map((item) => (
+                                <TouchableOpacity 
+                                    key={item.id} 
+                                    style={styles.dropdownItem}
+                                    onPress={() => handleSelectProduct(item)}
+                                >
+                                    <Text style={styles.dropdownItemName}>{item.name}</Text>
+                                    <Text style={styles.dropdownItemPrice}>₹{item.price}</Text>
+                                </TouchableOpacity>
+                            ))
+                        )}
+                    </View>
+                )}
+            </View>
+            {/* --- END NEW Autocomplete */}
+
+
+
 
             <View style={styles.row}>
+
               <View style={[styles.column, { marginRight: 10 }]}>
                 <Text style={styles.label}>Quantity</Text>
-                <TextInput 
-                  style={styles.input} 
-                  value={qty} 
+                <TextInput
+                  style={styles.input}
+                  value={qty}
                   onChangeText={setQty}
                   keyboardType="numeric"
                 />
               </View>
+
+
               <View style={styles.column}>
                 <Text style={styles.label}>Amount (₹)</Text>
-                <TextInput 
-                  style={styles.input} 
-                  value={rate} 
+                <TextInput
+                  style={styles.input}
+                  value={rate}
                   onChangeText={setRate}
                   keyboardType="numeric"
                   placeholder="0.00"
@@ -224,21 +303,29 @@ export default function BillingScreen() {
             </View>
 
             <TouchableOpacity style={styles.addButtonPrimary} onPress={handleAddItem}>
-              <Ionicons name="add" size={20} color="#FFF" style={{marginRight: 5}}/>
+              <Ionicons name="add" size={20} color="#FFF" style={{ marginRight: 5 }} />
               <Text style={styles.addButtonTextPrimary}>Add Item</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Card 3: Labour Charges */}
+
+
+
+
+
+
+
+
+          {/*  Labour Charges */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Labour Charges</Text>
-            
+
             <View style={styles.row}>
               <View style={[styles.column, { marginRight: 10 }]}>
                 <Text style={styles.label}>Labour/Service Name</Text>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="e.g. Oil Change" 
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Oil Change"
                   placeholderTextColor="#999"
                   value={labourName}
                   onChangeText={setLabourName}
@@ -246,9 +333,9 @@ export default function BillingScreen() {
               </View>
               <View style={styles.column}>
                 <Text style={styles.label}>Cost (₹)</Text>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="0.00" 
+                <TextInput
+                  style={styles.input}
+                  placeholder="0.00"
                   placeholderTextColor="#999"
                   keyboardType="numeric"
                   value={labourCost}
@@ -258,13 +345,24 @@ export default function BillingScreen() {
             </View>
 
             <TouchableOpacity style={styles.addButtonSecondary} onPress={handleAddLabour}>
-              <Ionicons name="add" size={20} color="#3B82F6" style={{marginRight: 5}}/>
+              <Ionicons name="add" size={20} color="#3B82F6" style={{ marginRight: 5 }} />
               <Text style={styles.addButtonTextSecondary}>Add Labour</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Card 4: Bill Items */}
+
+
+
+
+
+
+
+
+
+
+          {/*  Bill Items */}
           <View style={styles.card}>
+
             <View style={styles.billHeaderRow}>
               <Text style={styles.billSectionTitle}>Bill Items ({cartItems.length})</Text>
               <Text style={styles.totalText}>Total: <Text style={styles.totalAmount}>₹{grandTotal.toFixed(2)}</Text></Text>
@@ -272,34 +370,47 @@ export default function BillingScreen() {
 
             {/* Dynamic List */}
             {cartItems.length === 0 ? (
-                <Text style={{color: '#999', textAlign: 'center', padding: 10}}>No items added yet</Text>
+              <Text style={{ color: '#999', textAlign: 'center', padding: 10 }}>No items added yet</Text>
             ) : (
-                cartItems.map((item, index) => (
-                    <View key={item.id} style={[styles.billItem, index === cartItems.length - 1 && { borderBottomWidth: 0 }]}>
-                        <View style={styles.billItemDetails}>
-                        <Text style={styles.itemName}>{item.name}</Text>
+              cartItems.map((item, index) => (
+
+                <View key={item.id} style={[styles.billItem, index === cartItems.length - 1 && { borderBottomWidth: 0 }]}>
+
+                  <View style={styles.billItemDetails}>
+                    <Text style={styles.itemName}>{item.name}</Text>
+                    {item.type === 'product' ? (
                         <Text style={styles.itemMeta}>Qty: {item.qty} x ₹{item.rate.toFixed(2)}</Text>
-                        </View>
-                        <View style={styles.billItemRight}>
-                        <Text style={styles.itemPrice}>₹{item.amount.toFixed(2)}</Text>
-                        <TouchableOpacity onPress={() => handleRemoveItem(item.id)}>
-                            <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                        </TouchableOpacity>
-                        </View>
-                    </View>
-                ))
+                    ) : (
+                        <Text style={styles.itemMeta}>Service Charge</Text>
+                    )}
+                  </View>
+
+                  <View style={styles.billItemRight}>
+                    <Text style={styles.itemPrice}>₹{item.amount.toFixed(2)}</Text>
+                    <TouchableOpacity onPress={() => handleRemoveItem(item.id)}>
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+
+                </View>
+
+
+              ))
             )}
           </View>
 
-          {/* Card 5: Customer Information */}
+
+
+          {/* Customer Information */}
           <View style={styles.card}>
+
             <Text style={styles.sectionTitle}>Customer Information</Text>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Customer Name</Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Enter customer name" 
+              <TextInput
+                style={styles.input}
+                placeholder="Enter customer name"
                 placeholderTextColor="#999"
                 value={customerName}
                 onChangeText={setCustomerName}
@@ -308,10 +419,10 @@ export default function BillingScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Phone Number <Text style={styles.optionalLabel}>(Optional)</Text></Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Enter phone number" 
-                placeholderTextColor="#999" 
+              <TextInput
+                style={styles.input}
+                placeholder="Enter phone number"
+                placeholderTextColor="#999"
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
@@ -320,9 +431,9 @@ export default function BillingScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Vehicle Number <Text style={styles.optionalLabel}>(Optional)</Text></Text>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Enter vehicle number" 
+              <TextInput
+                style={styles.input}
+                placeholder="Enter vehicle number"
                 placeholderTextColor="#999"
                 value={vehicle}
                 onChangeText={setVehicle}
@@ -330,54 +441,26 @@ export default function BillingScreen() {
             </View>
           </View>
 
+
           {/* Footer Button */}
           <View style={styles.footerContainer}>
             <TouchableOpacity style={styles.printButton} onPress={handlePrintBill}>
-              <Ionicons name="print" size={20} color="#FFF" style={{marginRight: 8}}/>
+              <Ionicons name="print" size={20} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={styles.printButtonText}>Print Bill</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={{height: 40}} /> 
+          <View style={{ height: 40 }} />
+
+          
         </ScrollView>
 
-        {/* Product Selection Modal */}
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={() => setModalVisible(false)}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Select Product</Text>
-                        <TouchableOpacity onPress={() => setModalVisible(false)}>
-                            <Ionicons name="close" size={24} color="#333" />
-                        </TouchableOpacity>
-                    </View>
-                    {availableProducts.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Text style={{color:'#666'}}>No products found. Go to Add Product first.</Text>
-                        </View>
-                    ) : (
-                        <FlatList 
-                            data={availableProducts}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({item}) => (
-                                <TouchableOpacity 
-                                    style={styles.modalItem}
-                                    onPress={() => handleSelectProduct(item)}
-                                >
-                                    <Text style={styles.modalItemName}>{item.name}</Text>
-                                    <Text style={styles.modalItemPrice}>₹{item.price}</Text>
-                                </TouchableOpacity>
-                            )}
-                        />
-                    )}
-                </View>
-            </View>
-        </Modal>
+
+
+
+
+
+        
 
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -387,7 +470,7 @@ export default function BillingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F3F4F6', // The background color that will show between cards
+    backgroundColor: '#F3F4F6', 
   },
   keyboardView: {
     flex: 1,
@@ -406,27 +489,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 20,
   },
-  
-  cardMenu:{
+
+  cardMenu: {
     backgroundColor: "#fff",
     height: 50,
-    marginBottom:30,
-    justifyContent:"center",
-    paddingHorizontal:16,
+    marginBottom: 30,
+    justifyContent: "center",
+    paddingHorizontal: 16,
 
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16, 
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
   },
-  
+
   // Specific internal styles
   headerRow: {
     flexDirection: 'row',
@@ -454,6 +537,48 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#9CA3AF',
   },
+  // --- NEW STYLES FOR AUTOCOMPLETE ---
+  autocompleteContainer: {
+    marginBottom: 12,
+    zIndex: 100, // Important for stacking on Android
+    position: 'relative'
+  },
+  dropdownList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemName: { 
+    fontSize: 14, 
+    color: '#333' 
+  },
+  dropdownItemPrice: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#3B82F6' },
+  noResult: { 
+    padding: 12, 
+    alignItems: 'center' 
+  },
+  // -----------------------------------
   dropdownInput: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -564,7 +689,7 @@ const styles = StyleSheet.create({
   billItemRight: {
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    height: 40, 
+    height: 40,
   },
   itemPrice: {
     fontSize: 15,
@@ -587,7 +712,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  
+
   // Modal Styles
   modalOverlay: {
     flex: 1,

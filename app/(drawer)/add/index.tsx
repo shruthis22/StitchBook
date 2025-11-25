@@ -17,6 +17,8 @@ import {DrawerActions} from "@react-navigation/native";
 
 
 export default function AddProductScreen() {
+
+  
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const dispatch = useDispatch();
@@ -89,30 +91,83 @@ export default function AddProductScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#F3F4F6' 
+  },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFF',
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingHorizontal: 16, 
+    paddingVertical: 16, 
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E5E7EB',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#111827' 
+  },
   card: {
-    backgroundColor: '#FFF', margin: 16, borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
+    backgroundColor: '#FFF', 
+    margin: 16, 
+    borderRadius: 12, 
+    padding: 16,
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 5, 
+    elevation: 2,
   },
-  inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  inputGroup: { 
+    marginBottom: 20 
+  },
+  label: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    
+    color: '#374151', 
+    marginBottom: 8 
+  },
   input: {
-    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8,
-    padding: 12, fontSize: 16, color: '#111827',
+    borderWidth: 1, 
+    borderColor: '#D1D5DB', 
+    borderRadius: 8,
+    padding: 12, 
+    fontSize: 16, 
+    color: '#111827',
   },
-  priceContainer: { position: 'relative', justifyContent: 'center' },
-  currencySymbol: { position: 'absolute', left: 12, zIndex: 1, color: '#6B7280', fontSize: 16 },
-  priceInput: { paddingLeft: 30 },
-  footer: { padding: 16, position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#FFF' },
+  priceContainer: { 
+    position: 'relative', 
+    justifyContent: 'center' 
+  },
+  currencySymbol: { 
+    position: 'absolute', 
+    left: 12, zIndex: 1, 
+    color: '#6B7280', 
+    fontSize: 16 
+  },
+  priceInput: { 
+    paddingLeft: 30 
+  },
+  footer: { 
+    padding: 16, 
+    position: 'absolute', 
+    bottom: 0, width: '100%', 
+    backgroundColor: '#FFF' 
+  },
   saveButton: {
-    backgroundColor: '#3B82F6', borderRadius: 8, padding: 16,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#3B82F6', 
+    borderRadius: 8, 
+    padding: 16,
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center',
   },
-  saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  saveButtonText: { 
+    color: '#FFF', 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
 });

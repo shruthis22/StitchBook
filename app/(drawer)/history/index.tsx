@@ -11,7 +11,7 @@ import { DrawerActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-// Helper for status badge styles
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'Paid': return { bg: '#D1FAE5', text: '#059669' };
@@ -21,12 +21,20 @@ const getStatusColor = (status: string) => {
   }
 };
 
+
+
+
+
 export default function BillingHistoryScreen() {
+
+
+
   const bills = useSelector((state: RootState) => state.billing.bills);
   const router = useRouter();
   const navigation = useNavigation();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'All' | 'Paid' | 'Pending'>('All');
+
 
   const filteredBills = bills.filter(bill =>
     (filter === 'All' || bill.status === filter) &&
@@ -34,8 +42,14 @@ export default function BillingHistoryScreen() {
       bill.vehicleNumber.toLowerCase().includes(search.toLowerCase()))
   );
 
+
+
+
   const renderItem = ({ item }: { item: Bill }) => {
+
+
     const statusStyle = getStatusColor(item.status);
+
     return (
       <TouchableOpacity
         style={styles.card}
@@ -70,6 +84,8 @@ export default function BillingHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
           <Ionicons name="menu" size={24} color="#1F2937" />
@@ -78,8 +94,11 @@ export default function BillingHistoryScreen() {
         <View style={{ width: 24 }} />
       </View>
 
+
       <View style={styles.filterContainer}>
+
         <View style={styles.searchBar}>
+
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
@@ -88,9 +107,42 @@ export default function BillingHistoryScreen() {
             value={search}
             onChangeText={setSearch}
           />
+
         </View>
-        {/* Chips container code remains the same... */}
+
+
+
+        <View style={styles.chipsContainer}>
+
+          <TouchableOpacity style={styles.dateChip}>
+            <Ionicons name="calendar-outline" size={16} color="#374151" />
+            <Text style={styles.chipText}>Date Range</Text>
+          </TouchableOpacity>
+
+
+          <TouchableOpacity
+            style={[styles.filterChip, filter === 'Paid' && styles.activeChip]}
+            onPress={() => setFilter(filter === 'Paid' ? 'All' : 'Paid')}
+          >
+            <Text style={[styles.chipText, filter === 'Paid' && styles.activeChipText]}>Paid</Text>
+          </TouchableOpacity>
+
+
+          <TouchableOpacity
+            style={[styles.filterChip, filter === 'Pending' && styles.activeChip]}
+            onPress={() => setFilter(filter === 'Pending' ? 'All' : 'Pending')}
+          >
+            <Text style={[styles.chipText, filter === 'Pending' && styles.activeChipText]}>Pending</Text>
+
+          </TouchableOpacity>
+
+
+        </View>
+
+
       </View>
+
+
 
       <FlatList
         data={filteredBills}
@@ -99,34 +151,138 @@ export default function BillingHistoryScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
+
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F3F4F6'
+  },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 16, backgroundColor: '#FFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#FFF',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  filterContainer: { padding: 16, backgroundColor: '#FFF', marginBottom: 8 },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827'
+  },
+  filterContainer: {
+    padding: 16,
+    backgroundColor: '#FFF',
+    marginBottom: 8
+  },
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB',
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#E5E7EB'
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    //paddingVertical: 10, 
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    height: 50,
   },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#111827' },
-  listContent: { padding: 16 },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#111827'
+  },
+  listContent: {
+    padding: 16
+  },
   card: {
-    backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  customerName: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  vehicleInfo: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  amount: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
-  invoiceInfo: { fontSize: 13, color: '#6B7280' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { fontSize: 12, fontWeight: '600' },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827'
+  },
+  vehicleInfo: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2
+  },
+  amount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827'
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 12
+  },
+  invoiceInfo: {
+    fontSize: 13,
+    color: '#6B7280'
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  chipsContainer: { 
+    flexDirection: 'row',
+    marginTop: 12 
+  },
+  dateChip: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#D1D5DB',
+    borderRadius: 20, 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    marginRight: 8
+  },
+  filterChip: {
+    borderWidth: 1, 
+    borderColor: '#D1D5DB', 
+    borderRadius: 20,
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    marginRight: 8, 
+    backgroundColor: '#FFF'
+  },
+  activeChip: { 
+    backgroundColor: '#DBEAFE', 
+    borderColor: '#3B82F6' 
+  },
+  chipText: { 
+    fontSize: 13, 
+    color: '#374151', 
+    marginLeft: 4 
+  
+  },
+  activeChipText: { 
+    color: '#1E40AF', 
+    fontWeight: '500' 
+  },
+
 });
