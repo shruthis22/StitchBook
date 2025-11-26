@@ -14,12 +14,15 @@ export interface Bill {
   date: string;
   status: 'Paid' | 'Pending' | 'Overdue';
   amount: number;
-  items: Array<{ name: string; qty: number; rate: number; amount: number }>;
+  items: Array<{ id: string; name: string; qty: number; rate: number; amount: number; type: "product" | "labour" }>;
   customerPhone?: string;
   subtotal: number;
   tax: number;
   discount: number;
   grandTotal: number;
+  remarks: string,
+  currentKm: string,
+  nextServiceKm: string
 }
 
 export interface BillingState {
@@ -38,12 +41,17 @@ const billingSlice = createSlice({
   name: 'billing',
   initialState,
   reducers: {
+
     addProduct: (state, action: PayloadAction<Product>) => {
       state.products.push(action.payload);
     },
+
+
     addBill: (state, action: PayloadAction<Bill>) => {
-      state.bills.unshift(action.payload); // Add to top
+      state.bills.unshift(action.payload); 
     },
+
+
   },
 });
 

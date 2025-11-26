@@ -42,14 +42,18 @@ export default function BillingScreen() {
   const [phone, setPhone] = useState('');
   const [vehicle, setVehicle] = useState('');
 
-  
+  const [remarks, setRemarks] = useState("");
+  const [currentKm, setCurrentKm] = useState("");
+  const [nextServiceKm, setNextServiceKm] = useState("");
+
+
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
 
 
 
-  
+
   const [cartItems, setCartItems] = useState<Array<{
     id: string;
     name: string;
@@ -66,11 +70,21 @@ export default function BillingScreen() {
   const tax = subtotal * 0; // 0% Tax
   const grandTotal = subtotal + tax;
 
-  // --- NEW: Function to handle typing in product box
+
+
+
+
+
+
+
+
+
+
   const handleSearchProduct = (text: string) => {
+
     setProductName(text);
     if (text.length > 0) {
-      const filtered = availableProducts.filter(p => 
+      const filtered = availableProducts.filter(p =>
         p.name.toLowerCase().includes(text.toLowerCase())
       );
       setFilteredProducts(filtered);
@@ -80,7 +94,9 @@ export default function BillingScreen() {
     }
   };
 
-  // --- NEW: Function when user clicks a suggestion
+  
+
+
   const handleSelectProduct = (product: Product) => {
     setProductName(product.name);
     setRate(product.price);
@@ -88,7 +104,7 @@ export default function BillingScreen() {
     Keyboard.dismiss(); // Hide keyboard
   };
 
- 
+
 
   const handleAddItem = () => {
 
@@ -177,7 +193,10 @@ export default function BillingScreen() {
       tax,
       discount: 0,
       grandTotal,
-      items: cartItems
+      items: cartItems,
+      remarks: remarks,
+      currentKm: currentKm,
+      nextServiceKm: nextServiceKm
 
     };
 
@@ -221,58 +240,58 @@ export default function BillingScreen() {
 
         </View>
 
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"  
+          keyboardShouldPersistTaps="handled"
         >
 
 
 
 
-          
+
           <View style={[styles.card, { zIndex: 10 }]}>
 
             <Text style={styles.sectionTitle}>Add Products</Text>
 
             <Text style={styles.label}>Product Name</Text>
 
-            {/* --- NEW: Autocomplete Container Area */}
+            
             <View style={styles.autocompleteContainer}>
-                <TextInput 
-                    style={styles.input} 
-                    placeholder="Type product name..."
-                    placeholderTextColor="#999"
-                    value={productName}
-                    onChangeText={handleSearchProduct} // Call search logic
-                    onFocus={() => {
-                        if(productName) setShowDropdown(true);
-                    }}
-                />
-                
-                {/* --- NEW: The Dropdown List (Only shows when showDropdown is true) */}
-                {showDropdown && (
-                    <View style={styles.dropdownList}>
-                        {filteredProducts.length === 0 ? (
-                            <View style={styles.noResult}>
-                                <Text style={{color: '#999'}}>No matches. Use as custom item.</Text>
-                            </View>
-                        ) : (
-                            filteredProducts.map((item) => (
-                                <TouchableOpacity 
-                                    key={item.id} 
-                                    style={styles.dropdownItem}
-                                    onPress={() => handleSelectProduct(item)}
-                                >
-                                    <Text style={styles.dropdownItemName}>{item.name}</Text>
-                                    <Text style={styles.dropdownItemPrice}>₹{item.price}</Text>
-                                </TouchableOpacity>
-                            ))
-                        )}
+              <TextInput
+                style={styles.input}
+                placeholder="Type product name..."
+                placeholderTextColor="#999"
+                value={productName}
+                onChangeText={handleSearchProduct} // Call search logic
+                onFocus={() => {
+                  if (productName) setShowDropdown(true);
+                }}
+              />
+
+              
+              {showDropdown && (
+                <View style={styles.dropdownList}>
+                  {filteredProducts.length === 0 ? (
+                    <View style={styles.noResult}>
+                      <Text style={{ color: '#999' }}>No matches. Use as custom item.</Text>
                     </View>
-                )}
+                  ) : (
+                    filteredProducts.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={styles.dropdownItem}
+                        onPress={() => handleSelectProduct(item)}
+                      >
+                        <Text style={styles.dropdownItemName}>{item.name}</Text>
+                        <Text style={styles.dropdownItemPrice}>₹{item.price}</Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
             </View>
-            {/* --- END NEW Autocomplete */}
+            
 
 
 
@@ -291,7 +310,7 @@ export default function BillingScreen() {
 
 
               <View style={styles.column}>
-                <Text style={styles.label}>Amount (₹)</Text>
+                <Text style={styles.label}>Rate (₹)</Text>
                 <TextInput
                   style={styles.input}
                   value={rate}
@@ -379,9 +398,9 @@ export default function BillingScreen() {
                   <View style={styles.billItemDetails}>
                     <Text style={styles.itemName}>{item.name}</Text>
                     {item.type === 'product' ? (
-                        <Text style={styles.itemMeta}>Qty: {item.qty} x ₹{item.rate.toFixed(2)}</Text>
+                      <Text style={styles.itemMeta}>Qty: {item.qty} x ₹{item.rate.toFixed(2)}</Text>
                     ) : (
-                        <Text style={styles.itemMeta}>Service Charge</Text>
+                      <Text style={styles.itemMeta}>Service Charge</Text>
                     )}
                   </View>
 
@@ -439,7 +458,54 @@ export default function BillingScreen() {
                 onChangeText={setVehicle}
               />
             </View>
+
           </View>
+
+          {/* Service Details & Remarks */}
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Service Details</Text>
+
+            <View style={styles.row}>
+              <View style={[styles.column, { marginRight: 10 }]}>
+                <Text style={styles.label}>Current KM</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 12500"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                  value={currentKm}
+                  onChangeText={setCurrentKm}
+                />
+              </View>
+
+              <View style={styles.column}>
+                <Text style={styles.label}>Next Service KM</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 15000"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                  value={nextServiceKm}
+                  onChangeText={setNextServiceKm}
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Remarks / Notes</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Any specific notes for this bill..."
+                placeholderTextColor="#999"
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
+                value={remarks}
+                onChangeText={setRemarks}
+              />
+            </View>
+          </View>
+
 
 
           {/* Footer Button */}
@@ -450,9 +516,12 @@ export default function BillingScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={{ height: 40 }} />
 
           
+
+          <View style={{ height: 40 }} />
+
+
         </ScrollView>
 
 
@@ -460,7 +529,7 @@ export default function BillingScreen() {
 
 
 
-        
+
 
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -470,7 +539,7 @@ export default function BillingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F3F4F6', 
+    backgroundColor: '#F3F4F6',
   },
   keyboardView: {
     flex: 1,
@@ -566,17 +635,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  dropdownItemName: { 
-    fontSize: 14, 
-    color: '#333' 
+  dropdownItemName: {
+    fontSize: 14,
+    color: '#333'
   },
-  dropdownItemPrice: { 
-    fontSize: 14, 
-    fontWeight: '600', 
-    color: '#3B82F6' },
-  noResult: { 
-    padding: 12, 
-    alignItems: 'center' 
+  dropdownItemPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6'
+  },
+  noResult: {
+    padding: 12,
+    alignItems: 'center'
   },
   // -----------------------------------
   dropdownInput: {
@@ -755,5 +825,9 @@ const styles = StyleSheet.create({
   emptyState: {
     padding: 20,
     alignItems: 'center',
-  }
+  },
+  textArea: {
+    height: 80,
+    paddingTop: 10, 
+  },
 });
