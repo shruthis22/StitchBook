@@ -195,8 +195,8 @@ export default function BillingScreen() {
       grandTotal,
       items: cartItems,
       remarks: remarks,
-      currentKm: currentKm,
-      nextServiceKm: nextServiceKm
+      currentKm: currentKm ? parseFloat(currentKm) : 0, 
+      nextServiceKm: nextServiceKm ? parseFloat(nextServiceKm) : 0,
 
     };
 
