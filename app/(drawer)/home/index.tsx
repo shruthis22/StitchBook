@@ -19,6 +19,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, } from '../../../redux/store';
 import { addBill, Product } from "../../../redux/billSlice";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { printBill } from '../../../utils/printBill';
+
 
 
 export default function BillingScreen() {
@@ -94,7 +96,7 @@ export default function BillingScreen() {
     }
   };
 
-  
+
 
 
   const handleSelectProduct = (product: Product) => {
@@ -167,7 +169,7 @@ export default function BillingScreen() {
 
 
 
-  const handlePrintBill = () => {
+  const handlePrintBill = async() => {
 
 
     if (cartItems.length === 0) {
@@ -195,24 +197,36 @@ export default function BillingScreen() {
       grandTotal,
       items: cartItems,
       remarks: remarks,
-      currentKm: currentKm ? parseFloat(currentKm) : 0, 
+      currentKm: currentKm ? parseFloat(currentKm) : 0,
       nextServiceKm: nextServiceKm ? parseFloat(nextServiceKm) : 0,
 
     };
 
     dispatch(addBill(newBill));
 
-    Alert.alert('Success', 'Bill generated and saved to history!', [
-      {
-        text: 'OK', onPress: () => {
-          // Reset Form
-          setCartItems([]);
-          setCustomerName('');
-          setPhone('');
-          setVehicle('');
+    try {
+      await printBill(newBill);
+
+      // Success Message & Reset
+      Alert.alert('Success', 'Bill saved and PDF generated!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setCartItems([]);
+            setCustomerName('');
+            setPhone('');
+            setVehicle('');
+            setRemarks('');
+            setCurrentKm('');
+            setNextServiceKm('');
+          }
         }
-      }
-    ]);
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate PDF');
+      console.error(error);
+    }
+
   };
 
   return (
@@ -256,7 +270,7 @@ export default function BillingScreen() {
 
             <Text style={styles.label}>Product Name</Text>
 
-            
+
             <View style={styles.autocompleteContainer}>
               <TextInput
                 style={styles.input}
@@ -269,7 +283,7 @@ export default function BillingScreen() {
                 }}
               />
 
-              
+
               {showDropdown && (
                 <View style={styles.dropdownList}>
                   {filteredProducts.length === 0 ? (
@@ -291,7 +305,7 @@ export default function BillingScreen() {
                 </View>
               )}
             </View>
-            
+
 
 
 
@@ -517,7 +531,7 @@ export default function BillingScreen() {
           </View>
 
 
-          
+
 
           <View style={{ height: 40 }} />
 
@@ -828,6 +842,6 @@ const styles = StyleSheet.create({
   },
   textArea: {
     height: 80,
-    paddingTop: 10, 
+    paddingTop: 10,
   },
 });

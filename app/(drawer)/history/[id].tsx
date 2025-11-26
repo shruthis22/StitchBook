@@ -1,13 +1,14 @@
 import React from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/store';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { printBill } from '../../../utils/printBill';
+import { shareBill } from '@/utils/shareBill';
 
 
 
@@ -23,7 +24,29 @@ export default function BillDetailsScreen() {
 
   if (!bill) return <View style={styles.safeArea}><Text>Bill not found</Text></View>;
 
+  const printBillFun = async() => {
 
+    try {
+          await printBill(bill);
+    
+          
+        } catch (error) {
+          Alert.alert('Error', 'Failed to generate PDF');
+          console.error(error);
+        }
+  }
+
+   const shareBillFun = async() => {
+
+    try {
+          await shareBill(bill);
+    
+          
+        } catch (error) {
+          Alert.alert('Error', 'Failed to generate PDF');
+          console.error(error);
+        }
+  }
 
 
   return (
@@ -131,12 +154,12 @@ export default function BillDetailsScreen() {
 
         <View style={styles.buttonContainer}>
 
-          <TouchableOpacity style={styles.outlineButton}>
+          <TouchableOpacity style={styles.outlineButton} onPress={printBillFun}>
             <Ionicons name="print" size={20} color="#3B82F6" style={{marginRight: 8}}/>
             <Text style={styles.outlineButtonText}>Print</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.fillButton}>
+          <TouchableOpacity style={styles.fillButton} onPress={shareBillFun}>
             <Ionicons name="share-social" size={20} color="#FFF" style={{marginRight: 8}}/>
             <Text style={styles.fillButtonText}>Share</Text>
           </TouchableOpacity>
@@ -151,33 +174,97 @@ export default function BillDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
+
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#F3F4F6' 
+  },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 16, backgroundColor: '#FFF',
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    padding: 16, 
+    backgroundColor: '#FFF',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  content: { padding: 16, paddingBottom: 40 },
+  headerTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#111827' 
+  },
+  content: { 
+    padding: 16, 
+    paddingBottom: 40 
+  },
   card: {
-    backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1
+    backgroundColor: '#FFF', 
+    borderRadius: 12, 
+    padding: 16, 
+    marginBottom: 16,
+    shadowColor: '#000', 
+    shadowOpacity: 0.05, 
+    shadowRadius: 2, 
+    elevation: 1
   },
-  invoiceId: { fontSize: 14, color: '#6B7280' },
-  invoiceDate: { fontSize: 14, color: '#6B7280', marginTop: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 16 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  invoiceId: { 
+    fontSize: 14, 
+    color: '#6B7280' 
+  },
+  invoiceDate: { 
+    fontSize: 14, 
+    color: '#6B7280', 
+    marginTop: 2 
+  },
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: '#111827', 
+    marginBottom: 12 
+  },
+  divider: { 
+    height: 1, 
+    backgroundColor: '#F3F4F6', 
+    marginVertical: 16 
+  },
+  infoRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 12 
+  },
   iconBox: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: '#EFF6FF',
-    justifyContent: 'center', alignItems: 'center', marginRight: 12
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12
   },
-  infoText: { fontSize: 15, color: '#374151' },
+  infoText: { 
+    fontSize: 15, 
+    color: '#374151' 
+  },
   
   // Table
-  tableHeader: { flexDirection: 'row', marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  th: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
-  tableRow: { flexDirection: 'row', marginBottom: 12 },
-  td: { fontSize: 14, color: '#111827' },
+  tableHeader: { 
+    flexDirection: 'row', 
+    marginBottom: 8, 
+    paddingBottom: 8, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F3F4F6' 
+  },
+  th: { 
+    fontSize: 12, 
+    fontWeight: '600', 
+    color: '#6B7280' 
+  },
+  tableRow: { 
+    flexDirection: 'row', 
+    marginBottom: 12 
+  },
+  td: { 
+    fontSize: 14, 
+    color: '#111827' 
+  },
   
   // Totals
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
@@ -187,15 +274,40 @@ const styles = StyleSheet.create({
   grandTotalValue: { fontSize: 16, fontWeight: '700', color: '#059669' },
 
   // Buttons
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+  buttonContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between' 
+  },
   outlineButton: {
-    flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#3B82F6', borderRadius: 8, paddingVertical: 12, marginRight: 8, backgroundColor: '#FFF'
+    flex: 1, 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 1, 
+    borderColor: '#3B82F6', 
+    borderRadius: 8, 
+    paddingVertical: 12, 
+    marginRight: 8, 
+    backgroundColor: '#FFF'
   },
-  outlineButtonText: { color: '#3B82F6', fontSize: 15, fontWeight: '600' },
+  outlineButtonText: { 
+    color: '#3B82F6', 
+    fontSize: 15, 
+    fontWeight: '600' 
+  },
   fillButton: {
-    flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#3B82F6', borderRadius: 8, paddingVertical: 12, marginLeft: 8
+    flex: 1, 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: '#3B82F6', 
+    borderRadius: 8, 
+    paddingVertical: 12, 
+    marginLeft: 8
   },
-  fillButtonText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
+  fillButtonText: { 
+    color: '#FFF', 
+    fontSize: 15, 
+    fontWeight: '600'
+  },
 });
