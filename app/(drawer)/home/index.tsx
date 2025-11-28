@@ -11,27 +11,24 @@ import {
   Alert,
   Modal,
   FlatList,
-  Keyboard
+  Keyboard,
+  ActivityIndicator // Added for loading spinner
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, } from '../../../redux/store';
-import { addBill, Product } from "../../../redux/billSlice";
+import { RootState, AppDispatch } from '../../../redux/store'; // Added AppDispatch for async thunks
+import { saveBillToGoogleSheets, Product, Bill } from "../../../redux/billSlice"; // UPDATED IMPORT
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { printBill } from '../../../utils/printBill';
 
-
-
 export default function BillingScreen() {
-
-
   const navigation = useNavigation();
-  const dispatch = useDispatch();
-
+  
+  // Typed dispatch is recommended for AsyncThunks
+  const dispatch = useDispatch<AppDispatch>();
 
   const availableProducts = useSelector((state: RootState) => state.billing.products);
-
 
   const [productName, setProductName] = useState("");
   const [qty, setQty] = useState('1');
@@ -48,13 +45,11 @@ export default function BillingScreen() {
   const [currentKm, setCurrentKm] = useState("");
   const [nextServiceKm, setNextServiceKm] = useState("");
 
-
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-
-
-
-
+  
+  // New Loading State
+  const [isSaving, setIsSaving] = useState(false);
 
   const [cartItems, setCartItems] = useState<Array<{
     id: string;
@@ -65,25 +60,11 @@ export default function BillingScreen() {
     type: 'product' | 'labour'
   }>>([]);
 
-
-
-
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.amount, 0), [cartItems]);
   const tax = subtotal * 0; // 0% Tax
   const grandTotal = subtotal + tax;
 
-
-
-
-
-
-
-
-
-
-
   const handleSearchProduct = (text: string) => {
-
     setProductName(text);
     if (text.length > 0) {
       const filtered = availableProducts.filter(p =>
@@ -96,20 +77,14 @@ export default function BillingScreen() {
     }
   };
 
-
-
-
   const handleSelectProduct = (product: Product) => {
     setProductName(product.name);
     setRate(product.price);
     setShowDropdown(false);
-    Keyboard.dismiss(); // Hide keyboard
+    Keyboard.dismiss(); 
   };
 
-
-
   const handleAddItem = () => {
-
     if (!productName) {
       Alert.alert('Missing Info', 'Please select a product');
       return;
@@ -133,14 +108,12 @@ export default function BillingScreen() {
 
     setCartItems([...cartItems, newItem]);
 
-    // Reset fields
     setProductName("");
     setQty('1');
     setRate('');
   };
 
   const handleAddLabour = () => {
-
     if (!labourName || !labourCost) return;
 
     const cost = parseFloat(labourCost) || 0;
@@ -158,20 +131,12 @@ export default function BillingScreen() {
     setLabourCost('');
   };
 
-
-
-
   const handleRemoveItem = (id: string) => {
     setCartItems(cartItems.filter(item => item.id !== id));
   };
 
-
-
-
-
-  const handlePrintBill = async() => {
-
-
+  // --- UPDATED SAVE FUNCTION ---
+  const handlePrintBill = async () => {
     if (cartItems.length === 0) {
       Alert.alert('Empty Bill', 'Please add items before printing.');
       return;
@@ -182,14 +147,16 @@ export default function BillingScreen() {
       return;
     }
 
-    const newBill = {
+    // Start Loading
+    setIsSaving(true);
 
+    const newBill: Bill = {
       id: `#INV-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName,
       vehicleNumber: vehicle || 'N/A',
       customerPhone: phone,
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      status: 'Paid' as const, // Defaulting to Paid for now
+      status: 'Paid',
       amount: grandTotal,
       subtotal,
       tax,
@@ -199,16 +166,18 @@ export default function BillingScreen() {
       remarks: remarks,
       currentKm: currentKm ? parseFloat(currentKm) : 0,
       nextServiceKm: nextServiceKm ? parseFloat(nextServiceKm) : 0,
-
     };
 
-    dispatch(addBill(newBill));
-
     try {
+      // 1. Save to Google Sheets (Wait for it to finish)
+      // .unwrap() ensures we catch any errors thrown by the API
+      await dispatch(saveBillToGoogleSheets(newBill)).unwrap();
+
+      // 2. Generate PDF (Only if save was successful)
       await printBill(newBill);
 
-      // Success Message & Reset
-      Alert.alert('Success', 'Bill saved and PDF generated!', [
+      // 3. Success Message & Reset
+      Alert.alert('Success', 'Bill saved to Google Sheets and PDF generated!', [
         {
           text: 'OK',
           onPress: () => {
@@ -222,11 +191,14 @@ export default function BillingScreen() {
           }
         }
       ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate PDF');
-      console.error(error);
-    }
 
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to save bill: ' + (error.message || "Unknown error"));
+      console.error(error);
+    } finally {
+      // Stop Loading
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -237,21 +209,15 @@ export default function BillingScreen() {
       >
 
         <View style={styles.cardMenu}>
-
           <View style={styles.headerRow}>
-
             <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
               <Ionicons name="menu" size={24} color="#333" />
             </TouchableOpacity>
-
             <Text style={styles.cardTitle}>Billing Home</Text>
-
             <TouchableOpacity>
               <Ionicons name="time-outline" size={24} color="#333" />
             </TouchableOpacity>
-
           </View>
-
         </View>
 
         <ScrollView
@@ -260,16 +226,10 @@ export default function BillingScreen() {
           keyboardShouldPersistTaps="handled"
         >
 
-
-
-
-
+          {/* Add Products */}
           <View style={[styles.card, { zIndex: 10 }]}>
-
             <Text style={styles.sectionTitle}>Add Products</Text>
-
             <Text style={styles.label}>Product Name</Text>
-
 
             <View style={styles.autocompleteContainer}>
               <TextInput
@@ -277,12 +237,11 @@ export default function BillingScreen() {
                 placeholder="Type product name..."
                 placeholderTextColor="#999"
                 value={productName}
-                onChangeText={handleSearchProduct} // Call search logic
+                onChangeText={handleSearchProduct}
                 onFocus={() => {
                   if (productName) setShowDropdown(true);
                 }}
               />
-
 
               {showDropdown && (
                 <View style={styles.dropdownList}>
@@ -306,12 +265,7 @@ export default function BillingScreen() {
               )}
             </View>
 
-
-
-
-
             <View style={styles.row}>
-
               <View style={[styles.column, { marginRight: 10 }]}>
                 <Text style={styles.label}>Quantity</Text>
                 <TextInput
@@ -321,7 +275,6 @@ export default function BillingScreen() {
                   keyboardType="numeric"
                 />
               </View>
-
 
               <View style={styles.column}>
                 <Text style={styles.label}>Rate (₹)</Text>
@@ -341,18 +294,9 @@ export default function BillingScreen() {
             </TouchableOpacity>
           </View>
 
-
-
-
-
-
-
-
-
-          {/*  Labour Charges */}
+          {/* Labour Charges */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Labour Charges</Text>
-
             <View style={styles.row}>
               <View style={[styles.column, { marginRight: 10 }]}>
                 <Text style={styles.label}>Labour/Service Name</Text>
@@ -383,32 +327,18 @@ export default function BillingScreen() {
             </TouchableOpacity>
           </View>
 
-
-
-
-
-
-
-
-
-
-
-          {/*  Bill Items */}
+          {/* Bill Items */}
           <View style={styles.card}>
-
             <View style={styles.billHeaderRow}>
               <Text style={styles.billSectionTitle}>Bill Items ({cartItems.length})</Text>
               <Text style={styles.totalText}>Total: <Text style={styles.totalAmount}>₹{grandTotal.toFixed(2)}</Text></Text>
             </View>
 
-            {/* Dynamic List */}
             {cartItems.length === 0 ? (
               <Text style={{ color: '#999', textAlign: 'center', padding: 10 }}>No items added yet</Text>
             ) : (
               cartItems.map((item, index) => (
-
                 <View key={item.id} style={[styles.billItem, index === cartItems.length - 1 && { borderBottomWidth: 0 }]}>
-
                   <View style={styles.billItemDetails}>
                     <Text style={styles.itemName}>{item.name}</Text>
                     {item.type === 'product' ? (
@@ -424,19 +354,13 @@ export default function BillingScreen() {
                       <Ionicons name="trash-outline" size={20} color="#EF4444" />
                     </TouchableOpacity>
                   </View>
-
                 </View>
-
-
               ))
             )}
           </View>
 
-
-
           {/* Customer Information */}
           <View style={styles.card}>
-
             <Text style={styles.sectionTitle}>Customer Information</Text>
 
             <View style={styles.inputGroup}>
@@ -472,13 +396,11 @@ export default function BillingScreen() {
                 onChangeText={setVehicle}
               />
             </View>
-
           </View>
 
           {/* Service Details & Remarks */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Service Details</Text>
-
             <View style={styles.row}>
               <View style={[styles.column, { marginRight: 10 }]}>
                 <Text style={styles.label}>Current KM</Text>
@@ -520,31 +442,26 @@ export default function BillingScreen() {
             </View>
           </View>
 
-
-
-          {/* Footer Button */}
+          {/* Footer Button - Updated with Loading State */}
           <View style={styles.footerContainer}>
-            <TouchableOpacity style={styles.printButton} onPress={handlePrintBill}>
-              <Ionicons name="print" size={20} color="#FFF" style={{ marginRight: 8 }} />
-              <Text style={styles.printButtonText}>Print Bill</Text>
+            <TouchableOpacity 
+              style={[styles.printButton, isSaving && { opacity: 0.7 }]} 
+              onPress={handlePrintBill}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#FFF" style={{ marginRight: 8 }} />
+              ) : (
+                <Ionicons name="print" size={20} color="#FFF" style={{ marginRight: 8 }} />
+              )}
+              <Text style={styles.printButtonText}>
+                {isSaving ? "Saving Bill..." : "Save & Print Bill"}
+              </Text>
             </TouchableOpacity>
           </View>
 
-
-
-
           <View style={{ height: 40 }} />
-
-
         </ScrollView>
-
-
-
-
-
-
-
-
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -572,14 +489,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 20,
   },
-
   cardMenu: {
     backgroundColor: "#fff",
     height: 50,
     marginBottom: 30,
     justifyContent: "center",
     paddingHorizontal: 16,
-
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -592,8 +507,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-
-  // Specific internal styles
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -620,10 +533,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#9CA3AF',
   },
-  // --- NEW STYLES FOR AUTOCOMPLETE ---
   autocompleteContainer: {
     marginBottom: 12,
-    zIndex: 100, // Important for stacking on Android
+    zIndex: 100, 
     position: 'relative'
   },
   dropdownList: {
@@ -661,23 +573,6 @@ const styles = StyleSheet.create({
   noResult: {
     padding: 12,
     alignItems: 'center'
-  },
-  // -----------------------------------
-  dropdownInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  placeholderText: {
-    color: '#4B5563',
-    fontSize: 14,
   },
   input: {
     backgroundColor: '#F9FAFB',
@@ -795,50 +690,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
-    maxHeight: '60%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  modalItemName: {
-    fontSize: 16,
-    color: '#333',
-  },
-  modalItemPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
-  emptyState: {
-    padding: 20,
-    alignItems: 'center',
   },
   textArea: {
     height: 80,

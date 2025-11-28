@@ -22,4 +22,9 @@ redux/
    ->store.ts
    ->billSLice.ts
 
+utils/
+   ->printBills.ts
+   ->shareBill.ts
+   ->supabase.ts
+
 ```

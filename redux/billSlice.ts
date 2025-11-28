@@ -1,9 +1,11 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import { supabase } from '../utils/supabase'; // Make sure this path is correct
+
+
+
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxK6qlOEAWuXqMG67sIvbH-sX7ZvwSoTAtTQsbu5LWPXX--C4tAQpCXIWOGmLYCQxTj/exec";
+
 
 // --- Interfaces ---
-
-// 1. Extracted Item Interface for cleaner code
 export interface BillItem {
   id: string;
   name: string;
@@ -26,69 +28,98 @@ export interface Bill {
   date: string;
   status: 'Paid' | 'Pending' | 'Overdue';
   amount: number;
-  
-  // Uses the new specific interface
-  items: BillItem[]; 
-  
+  items: BillItem[];
   customerPhone?: string;
   subtotal: number;
   tax: number;
   discount: number;
   grandTotal: number;
   remarks: string;
-  
-  // Optional because old bills might not have them
-  currentKm?: number; 
+  currentKm?: number;
   nextServiceKm?: number;
 }
 
 export interface BillingState {
   products: Product[];
   bills: Bill[];
-  status: 'idle' | 'loading' | 'succeeded' | 'failed'; // Track sync status
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
 }
 
 const initialState: BillingState = {
   products: [],
   bills: [],
   status: 'idle',
+  error: null,
 };
 
-// --- Async Thunk (The Download Logic) ---
-export const fetchBillsFromSupabase = createAsyncThunk(
+// --- Async Thunks ---
+
+// 1. Fetch Products (GET ?type=products)
+export const fetchProductsFromGoogleSheets = createAsyncThunk(
+  'billing/fetchProducts',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${GOOGLE_SHEET_API_URL}?type=products`);
+      const data = await response.json();
+      if (data.status === 'error') throw new Error(data.message);
+      return data as Product[];
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// 2. Save Product (POST { ...product, _sheetType: 'products' })
+export const saveProductToGoogleSheets = createAsyncThunk(
+  'billing/saveProduct',
+  async (newProduct: Product, { rejectWithValue }) => {
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        // We add _sheetType so Apps Script knows where to put it
+        body: JSON.stringify({ ...newProduct, _sheetType: 'products' }),
+      });
+      const result = await response.json();
+      if (result.status === 'error') throw new Error(result.message);
+      return newProduct;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// 3. Fetch Bills (GET ?type=bills)
+export const fetchBillsFromGoogleSheets = createAsyncThunk(
   'billing/fetchBills',
   async (_, { rejectWithValue }) => {
     try {
-      // 1. Select all bills
-      const { data, error } = await supabase
-        .from('bills')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // 2. Map Database Format (snake_case) to App Format (camelCase)
-      const formattedData: Bill[] = data.map((item: any) => ({
-        id: item.id,
-        customerName: item.customer_name,
-        vehicleNumber: item.vehicle_number,
-        date: item.date,
-        status: item.status,
-        amount: item.amount,
-        items: item.items, // JSONB array works automatically
-        subtotal: item.subtotal,
-        tax: item.tax,
-        discount: item.discount || 0,
-        grandTotal: item.grand_total,
-        remarks: item.remarks,
-        currentKm: item.current_km,          // Maps current_km -> currentKm
-        nextServiceKm: item.next_service_km, // Maps next_service_km -> nextServiceKm
-        customerPhone: item.customer_phone
-      }));
-
-      return formattedData;
+      // Default type is bills, but being explicit helps
+      const response = await fetch(`${GOOGLE_SHEET_API_URL}?type=bills`);
+      const data = await response.json();
+      if (data.status === 'error') throw new Error(data.message);
+      return data as Bill[];
     } catch (error: any) {
-      console.error('Fetch Error:', error.message);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// 4. Save Bill (POST)
+export const saveBillToGoogleSheets = createAsyncThunk(
+  'billing/saveBill',
+  async (newBill: Bill, { rejectWithValue }) => {
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ ...newBill, _sheetType: 'bills' }),
+      });
+      const result = await response.json();
+      if (result.status === 'error') throw new Error(result.message);
+      return newBill;
+    } catch (error: any) {
       return rejectWithValue(error.message);
     }
   }
@@ -99,34 +130,28 @@ const billingSlice = createSlice({
   name: 'billing',
   initialState,
   reducers: {
-    addProduct: (state, action: PayloadAction<Product>) => {
+    // Legacy local reducers (optional now)
+    addProductLocal: (state, action: PayloadAction<Product>) => {
       state.products.push(action.payload);
     },
-    // We still keep this! The Middleware catches it to upload, 
-    // but this line updates the UI instantly.
-    addBill: (state, action: PayloadAction<Bill>) => {
-      state.bills.unshift(action.payload); 
-    },
   },
-  
-  // This handles the result of the download (fetchBillsFromSupabase)
+
   extraReducers: (builder) => {
     builder
-      .addCase(fetchBillsFromSupabase.pending, (state) => {
-        state.status = 'loading';
+      // Products
+      .addCase(fetchProductsFromGoogleSheets.fulfilled, (state, action) => {
+        state.products = action.payload;
       })
-      .addCase(fetchBillsFromSupabase.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        // Only update if we actually got data back
-        if (action.payload && action.payload.length > 0) {
-          state.bills = action.payload;
-        }
+      .addCase(saveProductToGoogleSheets.fulfilled, (state, action) => {
+        state.products.push(action.payload);
       })
-      .addCase(fetchBillsFromSupabase.rejected, (state) => {
-        state.status = 'failed';
+
+      // Bills
+      .addCase(fetchBillsFromGoogleSheets.fulfilled, (state, action) => {
+        state.bills = action.payload;
       });
   },
 });
 
-export const { addProduct, addBill } = billingSlice.actions;
+export const { addProductLocal } = billingSlice.actions;
 export default billingSlice.reducer;
