@@ -3,7 +3,7 @@ import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
 import billingReducer from './billSlice';
-import { supabaseSyncMiddleware } from './syncMiddleware';
+
 
 
 
@@ -29,7 +29,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(supabaseSyncMiddleware),
+    }),
 });
 
 export const persistor = persistStore(store);

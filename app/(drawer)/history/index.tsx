@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput
+  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../redux/store';
-import { Bill } from "../../../redux/billSlice";
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../../redux/store'; 
+import { Bill, fetchBillsFromGoogleSheets } from "../../../redux/billSlice";
 import { useRouter, useNavigation } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -21,47 +19,54 @@ const getStatusColor = (status: string) => {
   }
 };
 
-
-
-
-
 export default function BillingHistoryScreen() {
-
-
-
-  const bills = useSelector((state: RootState) => state.billing.bills);
+  const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const navigation = useNavigation();
+
+  // Get bills and loading status from Redux
+  const { bills, status } = useSelector((state: RootState) => state.billing);
+  
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'All' | 'Paid' | 'Pending'>('All');
+  const [refreshing, setRefreshing] = useState(false);
 
+  // 1. Fetch Data on Load
+  useEffect(() => {
+    dispatch(fetchBillsFromGoogleSheets());
+  }, [dispatch]);
+
+  // 2. Handle Pull-to-Refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await dispatch(fetchBillsFromGoogleSheets()).unwrap();
+    } catch (error) {
+      console.error("Refresh failed", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch]);
 
   const filteredBills = bills.filter(bill =>
     (filter === 'All' || bill.status === filter) &&
     (bill.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      bill.vehicleNumber.toLowerCase().includes(search.toLowerCase()))
+     bill.vehicleNumber.toLowerCase().includes(search.toLowerCase()) ||
+     bill.id.toLowerCase().includes(search.toLowerCase())) 
   );
 
-
-
-
   const renderItem = ({ item }: { item: Bill }) => {
-
-
     const statusStyle = getStatusColor(item.status);
 
     return (
       <TouchableOpacity
         style={styles.card}
         onPress={() => {
-          // FIX: Use object syntax to handle special characters like '#' in IDs
+          // Pass the ID securely
           router.push({
             pathname: '/(drawer)/history/[id]',
             params: { id: item.id }
           });
-
-          // ALTERNATIVE FIX (If using string path):
-          // router.push(`/(drawer)/history/${encodeURIComponent(item.id)}`);
         }}
       >
         <View style={styles.row}>
@@ -85,7 +90,6 @@ export default function BillingHistoryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
 
-
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
           <Ionicons name="menu" size={24} color="#1F2937" />
@@ -94,31 +98,23 @@ export default function BillingHistoryScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-
       <View style={styles.filterContainer}>
-
         <View style={styles.searchBar}>
-
           <Ionicons name="search" size={20} color="#9CA3AF" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by Name, Phone, Vehicle..."
+            placeholder="Search Name, Phone, Vehicle..."
             placeholderTextColor="#9CA3AF"
             value={search}
             onChangeText={setSearch}
           />
-
         </View>
 
-
-
         <View style={styles.chipsContainer}>
-
           <TouchableOpacity style={styles.dateChip}>
             <Ionicons name="calendar-outline" size={16} color="#374151" />
             <Text style={styles.chipText}>Date Range</Text>
           </TouchableOpacity>
-
 
           <TouchableOpacity
             style={[styles.filterChip, filter === 'Paid' && styles.activeChip]}
@@ -127,31 +123,38 @@ export default function BillingHistoryScreen() {
             <Text style={[styles.chipText, filter === 'Paid' && styles.activeChipText]}>Paid</Text>
           </TouchableOpacity>
 
-
           <TouchableOpacity
             style={[styles.filterChip, filter === 'Pending' && styles.activeChip]}
             onPress={() => setFilter(filter === 'Pending' ? 'All' : 'Pending')}
           >
             <Text style={[styles.chipText, filter === 'Pending' && styles.activeChipText]}>Pending</Text>
-
           </TouchableOpacity>
-
-
         </View>
-
-
       </View>
 
-
-
-      <FlatList
-        data={filteredBills}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-
+      {/* Show Spinner on initial load (if empty) */}
+      {status === 'loading' && bills.length === 0 && !refreshing ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={{ marginTop: 10, color: '#6B7280' }}>Loading bills...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredBills}
+          renderItem={renderItem}
+          keyExtractor={item => item.id.toString()} // Ensure ID is string
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
+          }
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 50 }}>
+              <Text style={{ color: '#9CA3AF' }}>No bills found.</Text>
+            </View>
+          }
+        />
+      )}
 
     </SafeAreaView>
   );
@@ -185,7 +188,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderRadius: 8,
     paddingHorizontal: 15,
-    //paddingVertical: 10, 
     borderWidth: 1,
     borderColor: '#E5E7EB',
     height: 50,
@@ -197,7 +199,8 @@ const styles = StyleSheet.create({
     color: '#111827'
   },
   listContent: {
-    padding: 16
+    padding: 16,
+    paddingBottom: 40,
   },
   card: {
     backgroundColor: '#FFF',
@@ -247,42 +250,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600'
   },
-  chipsContainer: { 
+  chipsContainer: {
     flexDirection: 'row',
-    marginTop: 12 
+    marginTop: 12
   },
   dateChip: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    borderWidth: 1, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 20, 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     marginRight: 8
   },
   filterChip: {
-    borderWidth: 1, 
-    borderColor: '#D1D5DB', 
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
     borderRadius: 20,
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    marginRight: 8, 
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
     backgroundColor: '#FFF'
   },
-  activeChip: { 
-    backgroundColor: '#DBEAFE', 
-    borderColor: '#3B82F6' 
+  activeChip: {
+    backgroundColor: '#DBEAFE',
+    borderColor: '#3B82F6'
   },
-  chipText: { 
-    fontSize: 13, 
-    color: '#374151', 
-    marginLeft: 4 
-  
+  chipText: {
+    fontSize: 13,
+    color: '#374151',
+    marginLeft: 4
   },
-  activeChipText: { 
-    color: '#1E40AF', 
-    fontWeight: '500' 
+  activeChipText: {
+    color: '#1E40AF',
+    fontWeight: '500'
   },
-
 });

@@ -11,12 +11,21 @@ import { StatusBar } from 'expo-status-bar';
 
 
 export default function RootLayout() {
+
+
   return(
     <Provider store={store}>
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <PersistGate loading={<View><Text>Loading...</Text></View>} persistor={persistor}>
-        <StatusBar style="dark" backgroundColor="#FFFFFF" />
+
+        
+
+
         <Slot />
+
+
       </PersistGate>
     </Provider>
   );
+
 }

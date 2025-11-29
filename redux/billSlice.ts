@@ -53,9 +53,9 @@ const initialState: BillingState = {
   error: null,
 };
 
-// --- Async Thunks ---
 
-// 1. Fetch Products (GET ?type=products)
+
+// Fetch Products (GET ?type=products)
 export const fetchProductsFromGoogleSheets = createAsyncThunk(
   'billing/fetchProducts',
   async (_, { rejectWithValue }) => {
@@ -70,7 +70,7 @@ export const fetchProductsFromGoogleSheets = createAsyncThunk(
   }
 );
 
-// 2. Save Product (POST { ...product, _sheetType: 'products' })
+// Save Product (POST { ...product, _sheetType: 'products' })
 export const saveProductToGoogleSheets = createAsyncThunk(
   'billing/saveProduct',
   async (newProduct: Product, { rejectWithValue }) => {
@@ -90,7 +90,7 @@ export const saveProductToGoogleSheets = createAsyncThunk(
   }
 );
 
-// 3. Fetch Bills (GET ?type=bills)
+// Fetch Bills (GET ?type=bills)
 export const fetchBillsFromGoogleSheets = createAsyncThunk(
   'billing/fetchBills',
   async (_, { rejectWithValue }) => {
@@ -106,7 +106,7 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
   }
 );
 
-// 4. Save Bill (POST)
+// Save Bill (POST)
 export const saveBillToGoogleSheets = createAsyncThunk(
   'billing/saveBill',
   async (newBill: Bill, { rejectWithValue }) => {
@@ -125,7 +125,7 @@ export const saveBillToGoogleSheets = createAsyncThunk(
   }
 );
 
-// --- The Slice ---
+// The Slice
 const billingSlice = createSlice({
   name: 'billing',
   initialState,

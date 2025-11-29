@@ -1,49 +1,75 @@
-
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { Bill } from '../redux/billSlice';
 
-
-
 // Helper to convert number to words (Simplified version)
 const numberToWords = (num: number): string => {
-    // You can replace this with a library like 'number-to-words' for better accuracy
-    return `${num} (Only)`;
+  // You can replace this with a library like 'number-to-words' for better accuracy
+  return `${num} (Only)`;
 };
-
-
 
 export const shareBill = async (bill: Bill) => {
 
+  // Separate Products and Labour for the layout
+  const products = bill.items.filter(item => item.type === 'product');
+  const labour = bill.items.filter(item => item.type === 'labour');
 
-    // Separate Products and Labour for the layout
-    const products = bill.items.filter(item => item.type === 'product');
-    const labour = bill.items.filter(item => item.type === 'labour');
-
-    // HTML Content matching your reference image
-    const html = `
+  // HTML Content matching your reference image
+  const html = `
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
         <style>
           @page { margin: 20px; }
           body { font-family: 'Helvetica', sans-serif; font-size: 12px; color: #000; }
-          .container { border: 2px solid #000; height: 98vh; display: flex; flex-direction: column; justify-content: space-between; }
           
-          /* Header */
-          .header { display: flex; border-bottom: 2px solid #000; }
+          /* Main Container: Flexbox to push footer to bottom */
+          .container { 
+            border: 2px solid #000; 
+            height: 98vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+          }
+          
+          /* Header (Don't shrink) */
+          .header { 
+            display: flex; 
+            border-bottom: 2px solid #000; 
+            flex-shrink: 0; 
+          }
           .header-left { flex: 1; padding: 10px; border-right: 1px solid #000; }
           .header-right { width: 300px; padding: 10px; }
           .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
           .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
           
-          /* Table */
-          .table-container { flex: 1; display: flex; flex-direction: column; }
-          table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          /* Table Container: Takes all remaining space */
+          .table-container { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+          }
+          
+          /* FIXED: Table takes 100% height to fill the flex container */
+          table { 
+            width: 100%; 
+            height: 100%; 
+            border-collapse: collapse; 
+            table-layout: fixed; 
+          }
+          
           th, td { border-right: 1px solid #000; padding: 5px; word-wrap: break-word; }
-          th { border-bottom: 1px solid #000; background-color: #f0f0f0; font-weight: bold; text-align: center; }
+          th { border-bottom: 1px solid #000; background-color: #f0f0f0; font-weight: bold; text-align: center; height: 30px; } 
           td { border-bottom: none; } /* Vertical lines only for body */
           
+          /* FIXED: Force content rows to be minimum height so they don't stretch ugly */
+          .item-row { height: 1px; }
+          
+          /* FIXED: Filler row takes all remaining space */
+          .filler-row { height: 100%; }
+          .filler-row td { vertical-align: top; }
+
           /* Column Widths */
           .col-sno { width: 40px; text-align: center; }
           .col-part { width: auto; text-align: left; }
@@ -53,12 +79,25 @@ export const shareBill = async (bill: Bill) => {
 
           /* Labour Section Header */
           .labour-header td { font-weight: bold; padding-top: 15px; text-decoration: underline; border-bottom: none; }
+          .labour-header { height: 1px; }
 
-          /* Footer Info Bar */
-          .footer-info { border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 5px; font-weight: bold; display: flex; justify-content: space-between; }
+          /* Footer Info Bar (Don't shrink) */
+          .footer-info { 
+            flex-shrink: 0; 
+            border-top: 2px solid #000; 
+            border-bottom: 1px solid #000; 
+            padding: 5px; 
+            font-weight: bold; 
+            display: flex; 
+            justify-content: space-between; 
+          }
           
-          /* Bottom Summary */
-          .footer-bottom { display: flex; height: 120px; }
+          /* Bottom Summary (Don't shrink) */
+          .footer-bottom { 
+            flex-shrink: 0; 
+            display: flex; 
+            height: 120px; 
+          }
           .footer-left { flex: 1; padding: 10px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: space-between; }
           .footer-right { width: 250px; display: flex; flex-direction: column; }
           
@@ -106,7 +145,7 @@ export const shareBill = async (bill: Bill) => {
               <tbody>
                 <!-- PRODUCTS -->
                 ${products.map((item, index) => `
-                  <tr>
+                  <tr class="item-row">
                     <td class="col-sno">${index + 1}</td>
                     <td class="col-part">${item.name}</td>
                     <td class="col-qty">${item.qty}</td>
@@ -128,7 +167,7 @@ export const shareBill = async (bill: Bill) => {
 
                 <!-- LABOUR ITEMS -->
                  ${labour.map((item, index) => `
-                  <tr>
+                  <tr class="item-row">
                     <td class="col-sno">${products.length + index + 1}</td>
                     <td class="col-part">${item.name}</td>
                     <td class="col-qty">-</td>
@@ -136,6 +175,16 @@ export const shareBill = async (bill: Bill) => {
                     <td class="col-amt">${item.amount.toFixed(2)}</td>
                   </tr>
                 `).join('')}
+
+                <!-- FILLER ROW: This empty row stretches to fill the rest of the page -->
+                <tr class="filler-row">
+                    <td class="col-sno"></td>
+                    <td class="col-part"></td>
+                    <td class="col-qty"></td>
+                    <td class="col-rate"></td>
+                    <td class="col-amt"></td>
+                </tr>
+
               </tbody>
             </table>
           </div>
