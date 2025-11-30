@@ -33,20 +33,25 @@ export const printBill = async (bill: Bill) => {
 
           /* <--- NEW SECTION: Watermark Styling */
           .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg); /* Center and rotate 45 degrees */
-            font-size: 60px;
-            font-weight: 900;
-            color: #000;
-            opacity: 0.08; /* Low opacity to make it look like a watermark */
-            z-index: -1;   /* Send it behind the text */
-            text-align: center;
-            line-height: 80px;
-            white-space: nowrap;
-            pointer-events: none;
-          }
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg); /* Center and rotate */
+  
+  font-size: 80px;       /* Increased size for better visibility */
+  font-weight: 900;
+  
+  /* Use RGBA for color: Black with 0.1 (10%) Opacity */
+  color: rgba(0, 0, 0, 0.10); 
+  
+  /* <--- KEY FIX: Put it ON TOP of the text, not behind */
+  z-index: 9999;   
+  
+  text-align: center;
+  line-height: 90px;
+  white-space: nowrap;
+  pointer-events: none;  /* Ensures it doesn't block any interaction */
+}
           
           .header { 
             display: flex; 

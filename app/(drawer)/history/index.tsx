@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator
+  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../../redux/store'; 
+import { RootState, AppDispatch } from '../../../redux/store';
 import { Bill, fetchBillsFromGoogleSheets } from "../../../redux/billSlice";
 import { useRouter, useNavigation } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import DateTimePicker from '@react-native-community/datetimepicker'; // <--- CHANGED: Import Picker
+
+// Helper to parse "30 Nov 2025" into a JS Date object
+const parseDateString = (dateStr: string) => {
+  return new Date(dateStr);
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -24,19 +31,22 @@ export default function BillingHistoryScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
-  // Get bills and loading status from Redux
   const { bills, status } = useSelector((state: RootState) => state.billing);
-  
+
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'All' | 'Paid' | 'Pending'>('All');
   const [refreshing, setRefreshing] = useState(false);
 
-  // 1. Fetch Data on Load
+  // <--- CHANGED: Date Range State
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
+
   useEffect(() => {
     dispatch(fetchBillsFromGoogleSheets());
   }, [dispatch]);
 
-  // 2. Handle Pull-to-Refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -48,21 +58,63 @@ export default function BillingHistoryScreen() {
     }
   }, [dispatch]);
 
-  const filteredBills = bills.filter(bill =>
-    (filter === 'All' || bill.status === filter) &&
-    (bill.customerName.toLowerCase().includes(search.toLowerCase()) ||
-     bill.vehicleNumber.toLowerCase().includes(search.toLowerCase()) ||
-     bill.id.toLowerCase().includes(search.toLowerCase())) 
-  );
+  // <--- CHANGED: Date Picker Logic
+  const showDatePicker = (mode: 'start' | 'end') => {
+    setPickerMode(mode);
+    setShowPicker(true);
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    // Hide picker immediately on Android
+    if (Platform.OS === 'android') setShowPicker(false);
+
+    if (selectedDate) {
+      if (pickerMode === 'start') {
+        setStartDate(selectedDate);
+        // After picking start date, automatically prompt for end date (Optional UX)
+        // setTimeout(() => showDatePicker('end'), 500); 
+      } else {
+        // Set end date to end of that day
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        setEndDate(endOfDay);
+      }
+    }
+  };
+
+  const clearDateFilter = () => {
+    setStartDate(null);
+    setEndDate(null);
+  };
+
+  // <--- CHANGED: Filtering Logic
+  const filteredBills = bills.filter(bill => {
+    // 1. Text Search Filter
+    const matchesSearch =
+      bill.customerName.toLowerCase().includes(search.toLowerCase()) ||
+      bill.vehicleNumber.toLowerCase().includes(search.toLowerCase()) ||
+      bill.id.toLowerCase().includes(search.toLowerCase());
+
+    // 2. Status Filter
+    const matchesStatus = filter === 'All' || bill.status === filter;
+
+    // 3. Date Range Filter
+    let matchesDate = true;
+    if (startDate || endDate) {
+      const billDate = parseDateString(bill.date);
+      if (startDate && billDate < startDate) matchesDate = false;
+      if (endDate && billDate > endDate) matchesDate = false;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
+  });
 
   const renderItem = ({ item }: { item: Bill }) => {
     const statusStyle = getStatusColor(item.status);
-
     return (
       <TouchableOpacity
         style={styles.card}
         onPress={() => {
-          // Pass the ID securely
           router.push({
             pathname: '/(drawer)/history/[id]',
             params: { id: item.id }
@@ -89,81 +141,115 @@ export default function BillingHistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
+      <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
-          <Ionicons name="menu" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Billing History</Text>
-        <View style={{ width: 24 }} />
-      </View>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+            <Ionicons name="menu" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Billing History</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      <View style={styles.filterContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#9CA3AF" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search Name, Phone, Vehicle..."
-            placeholderTextColor="#9CA3AF"
-            value={search}
-            onChangeText={setSearch}
+        <View style={styles.filterContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search Name, Phone, Vehicle..."
+              placeholderTextColor="#9CA3AF"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+
+          <View style={styles.chipsContainer}>
+
+
+            {startDate || endDate ? (
+              <TouchableOpacity style={[styles.dateChip, styles.activeChip]} onPress={clearDateFilter}>
+                <Ionicons name="close-circle" size={16} color="#1E40AF" />
+                <Text style={styles.activeChipText}>
+                  {startDate ? startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'Start'}
+                  {' - '}
+                  {endDate ? endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'End'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.dateChip} onPress={() => showDatePicker('start')}>
+                <Ionicons name="calendar-outline" size={16} color="#374151" />
+                <Text style={styles.chipText}>Date Range</Text>
+              </TouchableOpacity>
+            )}
+
+
+            {startDate && !endDate && (
+              <TouchableOpacity style={[styles.dateChip, { marginLeft: 0, backgroundColor: '#FEF3C7' }]} onPress={() => showDatePicker('end')}>
+                <Text style={[styles.chipText, { color: '#D97706' }]}>+ Set End Date</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.filterChip, filter === 'Paid' && styles.activeChip]}
+              onPress={() => setFilter(filter === 'Paid' ? 'All' : 'Paid')}
+            >
+              <Text style={[styles.chipText, filter === 'Paid' && styles.activeChipText]}>Paid</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterChip, filter === 'Pending' && styles.activeChip]}
+              onPress={() => setFilter(filter === 'Pending' ? 'All' : 'Pending')}
+            >
+              <Text style={[styles.chipText, filter === 'Pending' && styles.activeChipText]}>Pending</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+
+        {showPicker && (
+          <DateTimePicker
+            value={pickerMode === 'start' ? (startDate || new Date()) : (endDate || new Date())}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onDateChange}
+            maximumDate={new Date()} // Can't select future dates
           />
-        </View>
+        )}
 
-        <View style={styles.chipsContainer}>
-          <TouchableOpacity style={styles.dateChip}>
-            <Ionicons name="calendar-outline" size={16} color="#374151" />
-            <Text style={styles.chipText}>Date Range</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'Paid' && styles.activeChip]}
-            onPress={() => setFilter(filter === 'Paid' ? 'All' : 'Paid')}
-          >
-            <Text style={[styles.chipText, filter === 'Paid' && styles.activeChipText]}>Paid</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'Pending' && styles.activeChip]}
-            onPress={() => setFilter(filter === 'Pending' ? 'All' : 'Pending')}
-          >
-            <Text style={[styles.chipText, filter === 'Pending' && styles.activeChipText]}>Pending</Text>
-          </TouchableOpacity>
-        </View>
+        {status === 'loading' && bills.length === 0 && !refreshing ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={{ marginTop: 10, color: '#6B7280' }}>Loading bills...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredBills}
+            renderItem={renderItem}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
+            }
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', marginTop: 50 }}>
+                <Text style={{ color: '#9CA3AF' }}>No bills found.</Text>
+                {(startDate || endDate) && <Text style={{ color: '#3B82F6', marginTop: 5 }} onPress={clearDateFilter}>Clear Date Filter</Text>}
+              </View>
+            }
+          />
+        )}
       </View>
-
-      {/* Show Spinner on initial load (if empty) */}
-      {status === 'loading' && bills.length === 0 && !refreshing ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={{ marginTop: 10, color: '#6B7280' }}>Loading bills...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredBills}
-          renderItem={renderItem}
-          keyExtractor={item => item.id.toString()} // Ensure ID is string
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
-          }
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', marginTop: 50 }}>
-              <Text style={{ color: '#9CA3AF' }}>No bills found.</Text>
-            </View>
-          }
-        />
-      )}
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+
   safeArea: {
     flex: 1,
-    backgroundColor: '#F3F4F6'
+    backgroundColor: '#fff'
   },
   header: {
     flexDirection: 'row',
@@ -252,7 +338,8 @@ const styles = StyleSheet.create({
   },
   chipsContainer: {
     flexDirection: 'row',
-    marginTop: 12
+    marginTop: 12,
+    flexWrap: 'wrap' // Added to handle multiple date chips
   },
   dateChip: {
     flexDirection: 'row',
@@ -262,7 +349,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    marginRight: 8
+    marginRight: 8,
+    marginBottom: 4 // Added for wrap spacing
   },
   filterChip: {
     borderWidth: 1,
@@ -271,7 +359,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 8,
-    backgroundColor: '#FFF'
+    backgroundColor: '#FFF',
+    marginBottom: 4 // Added for wrap spacing
   },
   activeChip: {
     backgroundColor: '#DBEAFE',
@@ -284,6 +373,7 @@ const styles = StyleSheet.create({
   },
   activeChipText: {
     color: '#1E40AF',
-    fontWeight: '500'
+    fontWeight: '500',
+    marginLeft: 4
   },
 });

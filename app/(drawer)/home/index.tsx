@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { Bill, Product, saveBillToGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
 import { AppDispatch, RootState } from '../../../redux/store'; // Added AppDispatch for async thunks
-import { printBill } from '../../../utils/printBill2';
+import { printBill } from '../../../utils/printBill';
 import { StatusBar } from 'expo-status-bar';
 
 
@@ -474,10 +474,12 @@ export default function BillingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor:"#fff",
+   
   },
   keyboardView: {
     flex: 1,
+     backgroundColor: '#F3F4F6',
   },
   headerTitleContainer: {
     alignItems: 'center',

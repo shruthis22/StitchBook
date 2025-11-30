@@ -13,8 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/store';
-import { printBill } from '../../../utils/printBill2';
-
+import { printBill } from '../../../utils/printBill';
+import { StatusBar } from 'expo-status-bar';
 
 
 export default function BillDetailsScreen() {
@@ -57,7 +57,8 @@ export default function BillDetailsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
 
-
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
+            <View style={{flex:1, backgroundColor:"#F3F4F6"}}>
       
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -174,6 +175,7 @@ export default function BillDetailsScreen() {
 
 
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -182,7 +184,7 @@ const styles = StyleSheet.create({
 
   safeArea: { 
     flex: 1, 
-    backgroundColor: '#F3F4F6' 
+    backgroundColor: '#fff' 
   },
   header: {
     flexDirection: 'row', 

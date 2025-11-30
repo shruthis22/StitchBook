@@ -1,4 +1,4 @@
-import { Slot } from "expo-router";
+import { Slot , Stack} from "expo-router";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import {store, persistor} from "../redux/store";
@@ -7,7 +7,13 @@ import { StatusBar } from 'expo-status-bar';
 
 
 
+const RootNav = ()=> {
+  return(
+    <Stack>
 
+    </Stack>
+  );
+}
 
 
 export default function RootLayout() {
@@ -15,7 +21,7 @@ export default function RootLayout() {
 
   return(
     <Provider store={store}>
-      <StatusBar style="dark" backgroundColor="#FFFFFF" />
+      
       <PersistGate loading={<View><Text>Loading...</Text></View>} persistor={persistor}>
 
         

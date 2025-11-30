@@ -4,7 +4,7 @@
     "slug": "AutoMobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo-isaii.png",
+    "icon": "./assets/playstore-icon.png",
     "scheme": "automobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/logo-isaii.png"
+        "foregroundImage": "./assets/playstore-icon.png"
        
       },
       "edgeToEdgeEnabled": true,
@@ -30,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/logo-isaii.png",
+          "image": "./assets/playstore-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
