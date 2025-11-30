@@ -1,26 +1,29 @@
-import React, { useState, useMemo } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
+import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator // Added for loading spinner
+  ,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  Platform,
-  KeyboardAvoidingView,
-  Alert,
-  Modal,
-  FlatList,
-  Keyboard,
-  ActivityIndicator // Added for loading spinner
+  View
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../../redux/store'; // Added AppDispatch for async thunks
-import { saveBillToGoogleSheets, Product, Bill } from "../../../redux/billSlice"; // UPDATED IMPORT
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { printBill } from '../../../utils/printBill';
+import { useDispatch, useSelector } from 'react-redux';
+import { Bill, Product, saveBillToGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
+import { AppDispatch, RootState } from '../../../redux/store'; // Added AppDispatch for async thunks
+import { printBill } from '../../../utils/printBill2';
+import { StatusBar } from 'expo-status-bar';
+
+
+
 
 export default function BillingScreen() {
   const navigation = useNavigation();
@@ -203,6 +206,7 @@ export default function BillingScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}

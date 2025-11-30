@@ -1,14 +1,19 @@
-import React from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { shareBill } from '@/utils/shareBill';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../redux/store';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { printBill } from '../../../utils/printBill';
-import { shareBill } from '@/utils/shareBill';
+import { printBill } from '../../../utils/printBill2';
 
 
 

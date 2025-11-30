@@ -4,14 +4,17 @@ import { Bill } from '../redux/billSlice';
 
 // Helper to convert number to words (Simplified version)
 const numberToWords = (num: number): string => {
+  // You can replace this with a library like 'number-to-words' for better accuracy
   return `${num} (Only)`;
 };
 
 export const printBill = async (bill: Bill) => {
 
+  // Separate Products and Labour for the layout
   const products = bill.items.filter(item => item.type === 'product');
   const labour = bill.items.filter(item => item.type === 'labour');
 
+  // HTML Content matching your reference image
   const html = `
     <html>
       <head>
@@ -20,79 +23,65 @@ export const printBill = async (bill: Bill) => {
           @page { margin: 20px; }
           body { font-family: 'Helvetica', sans-serif; font-size: 12px; color: #000; }
           
-          /* Main Container */
+          /* Main Container: Flexbox to push footer to bottom */
           .container { 
             border: 2px solid #000; 
             height: 98vh; 
             display: flex; 
             flex-direction: column; 
-            justify-content: space-between;
-            position: relative; /* <--- CHANGED: Added relative positioning so the watermark stays inside this border */
-            z-index: 1;         /* <--- CHANGED: Added z-index context */
-          }
-
-          /* <--- NEW SECTION: Watermark Styling */
-          .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg); /* Center and rotate 45 degrees */
-            font-size: 60px;
-            font-weight: 900;
-            color: #000;
-            opacity: 0.08; /* Low opacity to make it look like a watermark */
-            z-index: -1;   /* Send it behind the text */
-            text-align: center;
-            line-height: 80px;
-            white-space: nowrap;
-            pointer-events: none;
+            justify-content: space-between; 
           }
           
+          /* Header (Don't shrink) */
           .header { 
             display: flex; 
             border-bottom: 2px solid #000; 
             flex-shrink: 0; 
-            background-color: transparent; /* <--- CHANGED: Ensure background is transparent so watermark shows through */
           }
           .header-left { flex: 1; padding: 10px; border-right: 1px solid #000; }
           .header-right { width: 300px; padding: 10px; }
           .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
           .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
           
+          /* Table Container: Takes all remaining space */
           .table-container { 
             flex: 1; 
             display: flex; 
             flex-direction: column; 
             overflow: hidden; 
-            background-color: transparent; /* <--- CHANGED: Transparent background */
           }
           
+          /* FIXED: Table takes 100% height to fill the flex container */
           table { 
             width: 100%; 
             height: 100%; 
             border-collapse: collapse; 
             table-layout: fixed; 
-            background-color: transparent; /* <--- CHANGED: Transparent background */
           }
           
           th, td { border-right: 1px solid #000; padding: 5px; word-wrap: break-word; }
-          th { border-bottom: 1px solid #000; background-color: rgba(240, 240, 240, 0.8); font-weight: bold; text-align: center; height: 30px; } 
-          td { border-bottom: none; }
+          th { border-bottom: 1px solid #000; background-color: #f0f0f0; font-weight: bold; text-align: center; height: 30px; } 
+          td { border-bottom: none; } /* Vertical lines only for body */
           
+          /* FIXED: Force content rows to be minimum height so they don't stretch ugly */
           .item-row { height: 1px; }
           
+          /* FIXED: Filler row takes all remaining space */
           .filler-row { height: 100%; }
           .filler-row td { vertical-align: top; }
 
+          /* Column Widths */
           .col-sno { width: 40px; text-align: center; }
           .col-part { width: auto; text-align: left; }
           .col-qty { width: 60px; text-align: center; }
           .col-rate { width: 80px; text-align: right; }
           .col-amt { width: 90px; text-align: right; border-right: none; }
 
+          /* Labour Section Header */
           .labour-header td { font-weight: bold; padding-top: 15px; text-decoration: underline; border-bottom: none; }
           .labour-header { height: 1px; }
 
+          /* Footer Info Bar (Don't shrink) */
           .footer-info { 
             flex-shrink: 0; 
             border-top: 2px solid #000; 
@@ -101,14 +90,13 @@ export const printBill = async (bill: Bill) => {
             font-weight: bold; 
             display: flex; 
             justify-content: space-between; 
-            background-color: white; /* <--- CHANGED: Keep footer white to make text readable over watermark */
           }
           
+          /* Bottom Summary (Don't shrink) */
           .footer-bottom { 
             flex-shrink: 0; 
             display: flex; 
-            height: 120px;
-            background-color: white; /* <--- CHANGED: Keep footer white */
+            height: 120px; 
           }
           .footer-left { flex: 1; padding: 10px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: space-between; }
           .footer-right { width: 250px; display: flex; flex-direction: column; }
@@ -125,11 +113,8 @@ export const printBill = async (bill: Bill) => {
       </head>
       <body>
         <div class="container">
-
-          <div class="watermark">
-            ISAII BILLSUITE<br>SAMPLE BILL
-          </div>
           
+          <!-- HEADER -->
           <div class="header">
             <div class="header-left">
               <div class="row"><strong>Bill To:</strong></div>
@@ -145,6 +130,7 @@ export const printBill = async (bill: Bill) => {
             </div>
           </div>
 
+          <!-- TABLE -->
           <div class="table-container">
             <table>
               <thead>
@@ -157,6 +143,7 @@ export const printBill = async (bill: Bill) => {
                 </tr>
               </thead>
               <tbody>
+                <!-- PRODUCTS -->
                 ${products.map((item, index) => `
                   <tr class="item-row">
                     <td class="col-sno">${index + 1}</td>
@@ -167,6 +154,7 @@ export const printBill = async (bill: Bill) => {
                   </tr>
                 `).join('')}
 
+                <!-- LABOUR HEADER -->
                 ${labour.length > 0 ? `
                   <tr class="labour-header">
                     <td class="col-sno"></td>
@@ -177,6 +165,7 @@ export const printBill = async (bill: Bill) => {
                   </tr>
                 ` : ''}
 
+                <!-- LABOUR ITEMS -->
                  ${labour.map((item, index) => `
                   <tr class="item-row">
                     <td class="col-sno">${products.length + index + 1}</td>
@@ -187,6 +176,7 @@ export const printBill = async (bill: Bill) => {
                   </tr>
                 `).join('')}
 
+                <!-- FILLER ROW: This empty row stretches to fill the rest of the page -->
                 <tr class="filler-row">
                     <td class="col-sno"></td>
                     <td class="col-part"></td>
@@ -199,6 +189,7 @@ export const printBill = async (bill: Bill) => {
             </table>
           </div>
 
+          <!-- FOOTER START -->
           <div class="footer-info">
             <span>Current KM: ${bill.currentKm || '0'}</span>
             <span>Next Service KM: ${bill.nextServiceKm || '0'}</span>
@@ -243,6 +234,7 @@ export const printBill = async (bill: Bill) => {
     </html>
   `;
 
+  // Print Logic
   const { uri } = await Print.printToFileAsync({ html });
   console.log('File has been saved to:', uri);
   
