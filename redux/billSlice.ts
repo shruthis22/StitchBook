@@ -55,40 +55,88 @@ const initialState: BillingState = {
 
 
 
+
+
+
+
+
 // Fetch Products (GET ?type=products)
 export const fetchProductsFromGoogleSheets = createAsyncThunk(
+
   'billing/fetchProducts',
+
   async (_, { rejectWithValue }) => {
+
     try {
       const response = await fetch(`${GOOGLE_SHEET_API_URL}?type=products`);
+
       const data = await response.json();
+
       if (data.status === 'error') throw new Error(data.message);
+
       return data as Product[];
-    } catch (error: any) {
+    } 
+    catch (error: any) {
       return rejectWithValue(error.message);
     }
+
+
   }
 );
 
+
+
+
+
+
+
+
+
+
+
+
 // Save Product (POST { ...product, _sheetType: 'products' })
 export const saveProductToGoogleSheets = createAsyncThunk(
+
   'billing/saveProduct',
+
+
   async (newProduct: Product, { rejectWithValue }) => {
+
+
     try {
+
       const response = await fetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         // We add _sheetType so Apps Script knows where to put it
         body: JSON.stringify({ ...newProduct, _sheetType: 'products' }),
       });
+      
+
       const result = await response.json();
       if (result.status === 'error') throw new Error(result.message);
       return newProduct;
-    } catch (error: any) {
+    } 
+    catch (error: any) {
       return rejectWithValue(error.message);
     }
+
+
   }
 );
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Fetch Bills (GET ?type=bills)
 export const fetchBillsFromGoogleSheets = createAsyncThunk(
@@ -105,6 +153,16 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
     }
   }
 );
+
+
+
+
+
+
+
+
+
+
 
 // Save Bill (POST)
 export const saveBillToGoogleSheets = createAsyncThunk(
@@ -125,8 +183,18 @@ export const saveBillToGoogleSheets = createAsyncThunk(
   }
 );
 
+
+
+
+
+
+
+
+
 // The Slice
 const billingSlice = createSlice({
+
+
   name: 'billing',
   initialState,
   reducers: {
@@ -136,7 +204,9 @@ const billingSlice = createSlice({
     },
   },
 
+
   extraReducers: (builder) => {
+    
     builder
       // Products
       .addCase(fetchProductsFromGoogleSheets.fulfilled, (state, action) => {
@@ -152,6 +222,11 @@ const billingSlice = createSlice({
       });
   },
 });
+
+
+
+
+
 
 export const { addProductLocal } = billingSlice.actions;
 export default billingSlice.reducer;
