@@ -244,6 +244,8 @@ export default function BillingScreen() {
 
           {/* Add Products */}
           <View style={[styles.card, { zIndex: 10 }]}>
+
+
             <Text style={styles.sectionTitle}>Add Products</Text>
             <Text style={styles.label}>Product Name</Text>
 
@@ -261,22 +263,36 @@ export default function BillingScreen() {
 
               {showDropdown && (
                 <View style={styles.dropdownList}>
+                  <ScrollView 
+                   keyboardShouldPersistTaps="handled" 
+                   nestedScrollEnabled={true} // Important for Android
+                   style={{ maxHeight: 200 }} // Ensure ScrollView respects the height
+                >
+
                   {filteredProducts.length === 0 ? (
+
                     <View style={styles.noResult}>
                       <Text style={{ color: '#999' }}>No matches. Use as custom item.</Text>
                     </View>
+
                   ) : (
                     filteredProducts.map((item) => (
+
                       <TouchableOpacity
                         key={item.id}
                         style={styles.dropdownItem}
                         onPress={() => handleSelectProduct(item)}
                       >
+
                         <Text style={styles.dropdownItemName}>{item.name}</Text>
                         <Text style={styles.dropdownItemPrice}>₹{item.price}</Text>
+
+
                       </TouchableOpacity>
                     ))
                   )}
+
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -304,11 +320,25 @@ export default function BillingScreen() {
               </View>
             </View>
 
+
+
             <TouchableOpacity style={styles.addButtonPrimary} onPress={handleAddItem}>
               <Ionicons name="add" size={20} color="#FFF" style={{ marginRight: 5 }} />
               <Text style={styles.addButtonTextPrimary}>Add Item</Text>
             </TouchableOpacity>
+
+
+
           </View>
+
+
+
+
+
+
+
+
+
 
           {/* Labour Charges */}
           <View style={styles.card}>
@@ -576,12 +606,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    maxHeight: 200,
+    //maxHeight: 200,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 5,
     zIndex: 1000,
+    overflow:"hidden"
   },
   dropdownItem: {
     flexDirection: 'row',
