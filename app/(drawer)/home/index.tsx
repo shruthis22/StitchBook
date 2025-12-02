@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ActivityIndicator // Added for loading spinner
   ,
@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bill, Product, saveBillToGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
+import { Bill, Product, saveBillToGoogleSheets, fetchProductsFromGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
 import { AppDispatch, RootState } from '../../../redux/store'; // Added AppDispatch for async thunks
 import { printBill } from '../../../utils/printBill';
 import { StatusBar } from 'expo-status-bar';
@@ -27,11 +27,18 @@ import { StatusBar } from 'expo-status-bar';
 
 export default function BillingScreen() {
   const navigation = useNavigation();
-  
+
   // Typed dispatch is recommended for AsyncThunks
   const dispatch = useDispatch<AppDispatch>();
 
   const availableProducts = useSelector((state: RootState) => state.billing.products);
+
+  useEffect(() => {
+    // Only fetch if we don't have products yet (optimization)
+    if (availableProducts.length === 0) {
+      dispatch(fetchProductsFromGoogleSheets());
+    }
+  }, [dispatch]);
 
   const [productName, setProductName] = useState("");
   const [qty, setQty] = useState('1');
@@ -43,6 +50,8 @@ export default function BillingScreen() {
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [vehicle, setVehicle] = useState('');
+  const [vehicleName, setVehicleName] = useState('');
+
 
   const [remarks, setRemarks] = useState("");
   const [currentKm, setCurrentKm] = useState("");
@@ -50,7 +59,7 @@ export default function BillingScreen() {
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  
+
   // New Loading State
   const [isSaving, setIsSaving] = useState(false);
 
@@ -84,7 +93,7 @@ export default function BillingScreen() {
     setProductName(product.name);
     setRate(product.price);
     setShowDropdown(false);
-    Keyboard.dismiss(); 
+    Keyboard.dismiss();
   };
 
   const handleAddItem = () => {
@@ -154,9 +163,11 @@ export default function BillingScreen() {
     setIsSaving(true);
 
     const newBill: Bill = {
-      id: `#INV-${Math.floor(1000 + Math.random() * 9000)}`,
+      //id: `#INV-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `#INV-${Date.now().toString().slice(-6)}`,
       customerName,
       vehicleNumber: vehicle || 'N/A',
+      vehicleName: vehicleName || '',
       customerPhone: phone,
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       status: 'Paid',
@@ -191,6 +202,7 @@ export default function BillingScreen() {
             setRemarks('');
             setCurrentKm('');
             setNextServiceKm('');
+            setVehicleName('');
           }
         }
       ]);
@@ -391,6 +403,17 @@ export default function BillingScreen() {
             </View>
 
             <View style={styles.inputGroup}>
+              <Text style={styles.label}>Vehicle Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Honda City"
+                placeholderTextColor="#999"
+                value={vehicleName}
+                onChangeText={setVehicleName}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
               <Text style={styles.label}>Vehicle Number <Text style={styles.optionalLabel}>(Optional)</Text></Text>
               <TextInput
                 style={styles.input}
@@ -448,8 +471,8 @@ export default function BillingScreen() {
 
           {/* Footer Button - Updated with Loading State */}
           <View style={styles.footerContainer}>
-            <TouchableOpacity 
-              style={[styles.printButton, isSaving && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.printButton, isSaving && { opacity: 0.7 }]}
               onPress={handlePrintBill}
               disabled={isSaving}
             >
@@ -474,12 +497,12 @@ export default function BillingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor:"#fff",
-   
+    backgroundColor: "#fff",
+
   },
   keyboardView: {
     flex: 1,
-     backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F4F6',
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -541,7 +564,7 @@ const styles = StyleSheet.create({
   },
   autocompleteContainer: {
     marginBottom: 12,
-    zIndex: 100, 
+    zIndex: 100,
     position: 'relative'
   },
   dropdownList: {

@@ -10,12 +10,19 @@ import { useRouter, useNavigation } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import DateTimePicker from '@react-native-community/datetimepicker'; // <--- CHANGED: Import Picker
+import DateTimePicker from '@react-native-community/datetimepicker'; 
+
+
+
+
 
 // Helper to parse "30 Nov 2025" into a JS Date object
 const parseDateString = (dateStr: string) => {
   return new Date(dateStr);
 };
+
+
+
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -26,7 +33,16 @@ const getStatusColor = (status: string) => {
   }
 };
 
+
+
+
+
+
 export default function BillingHistoryScreen() {
+
+
+
+
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -37,38 +53,68 @@ export default function BillingHistoryScreen() {
   const [filter, setFilter] = useState<'All' | 'Paid' | 'Pending'>('All');
   const [refreshing, setRefreshing] = useState(false);
 
+
+
   // <--- CHANGED: Date Range State
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
 
+
+
+
+
   useEffect(() => {
     dispatch(fetchBillsFromGoogleSheets());
   }, [dispatch]);
 
+
+
+
+
   const onRefresh = useCallback(async () => {
+
     setRefreshing(true);
-    try {
+
+    try 
+    {
+
       await dispatch(fetchBillsFromGoogleSheets()).unwrap();
-    } catch (error) {
+
+    } 
+    catch (error) 
+    {
       console.error("Refresh failed", error);
-    } finally {
+    } 
+    finally 
+    {
       setRefreshing(false);
     }
   }, [dispatch]);
 
-  // <--- CHANGED: Date Picker Logic
+
+
+
+
+
+  
   const showDatePicker = (mode: 'start' | 'end') => {
     setPickerMode(mode);
     setShowPicker(true);
   };
 
+
+
+
   const onDateChange = (event: any, selectedDate?: Date) => {
+
+
     // Hide picker immediately on Android
     if (Platform.OS === 'android') setShowPicker(false);
 
     if (selectedDate) {
+
       if (pickerMode === 'start') {
         setStartDate(selectedDate);
         // After picking start date, automatically prompt for end date (Optional UX)
@@ -82,13 +128,21 @@ export default function BillingHistoryScreen() {
     }
   };
 
+
+
   const clearDateFilter = () => {
     setStartDate(null);
     setEndDate(null);
   };
 
+
+
+
+
   // <--- CHANGED: Filtering Logic
   const filteredBills = bills.filter(bill => {
+
+
     // 1. Text Search Filter
     const matchesSearch =
       bill.customerName.toLowerCase().includes(search.toLowerCase()) ||
@@ -109,8 +163,16 @@ export default function BillingHistoryScreen() {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
+
+
+
+
+
   const renderItem = ({ item }: { item: Bill }) => {
+
+
     const statusStyle = getStatusColor(item.status);
+
     return (
       <TouchableOpacity
         style={styles.card}
@@ -121,6 +183,7 @@ export default function BillingHistoryScreen() {
           });
         }}
       >
+
         <View style={styles.row}>
           <View>
             <Text style={styles.customerName}>{item.customerName}</Text>
@@ -128,13 +191,17 @@ export default function BillingHistoryScreen() {
           </View>
           <Text style={styles.amount}>₹{item.amount.toFixed(2)}</Text>
         </View>
+
         <View style={[styles.divider]} />
+
         <View style={styles.row}>
           <Text style={styles.invoiceInfo}>Invoice {item.id} • {item.date}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
           </View>
         </View>
+
+
       </TouchableOpacity>
     );
   };
@@ -143,6 +210,8 @@ export default function BillingHistoryScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
+
+        
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>

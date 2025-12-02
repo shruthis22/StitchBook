@@ -37,6 +37,7 @@ export interface Bill {
   remarks: string;
   currentKm?: number;
   nextServiceKm?: number;
+  vehicleName?: string;
 }
 
 export interface BillingState {
@@ -197,13 +198,7 @@ const billingSlice = createSlice({
 
   name: 'billing',
   initialState,
-  reducers: {
-    // Legacy local reducers (optional now)
-    addProductLocal: (state, action: PayloadAction<Product>) => {
-      state.products.push(action.payload);
-    },
-  },
-
+  reducers: {},
 
   extraReducers: (builder) => {
     
@@ -228,5 +223,5 @@ const billingSlice = createSlice({
 
 
 
-export const { addProductLocal } = billingSlice.actions;
+//export const { addProductLocal } = billingSlice.actions;
 export default billingSlice.reducer;
