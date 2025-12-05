@@ -3,19 +3,19 @@ import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
 import billingReducer from './billSlice';
-
-
+import authReducer from "./authSlice";
 
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['billing'],
+  whitelist: ['billing', 'auth'],
 };
 
 
 
 const rootReducer = combineReducers({
+  auth: authReducer,
   billing: billingReducer,
 });
 

@@ -1,16 +1,54 @@
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
-import { Bill } from '../redux/billSlice';
+import { Asset } from 'expo-asset';
+// import * as FileSystem from 'expo-file-system'; // REMOVED: Deprecated in newer SDKs
+import { Bill } from '../redux/billSlice'; 
 
-// Helper to convert number to words (Simplified version)
+// Helper to convert number to words
 const numberToWords = (num: number): string => {
   return `${num} (Only)`;
+};
+
+// NEW: Helper to safely convert local URI to Base64 using standard Fetch API
+// This avoids the "FileSystem.readAsStringAsync" deprecation error.
+const convertUriToBase64 = async (uri: string): Promise<string> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      resolve(reader.result as string); // Returns 'data:image/png;base64,...'
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 export const printBill = async (bill: Bill) => {
 
   const products = bill.items.filter(item => item.type === 'product');
   const labour = bill.items.filter(item => item.type === 'labour');
+
+  // --- LOCAL IMAGE LOADING LOGIC (UPDATED) ---
+  // 1. Load the asset.
+  const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
+  
+  // 2. Ensure the asset is downloaded/cached locally
+  await logoAsset.downloadAsync();
+
+  // 3. Convert to Base64 using the new helper
+  // This replaces the deprecated FileSystem call
+  let logoBase64 = "";
+  if (logoAsset.localUri) {
+     try {
+       logoBase64 = await convertUriToBase64(logoAsset.localUri);
+     } catch (e) {
+       console.error("Failed to load logo", e);
+       // Fallback to a placeholder if local load fails
+       logoBase64 = "https://cdn-icons-png.flaticon.com/512/3202/3202926.png"; 
+     }
+  }
 
   const html = `
     <html>
@@ -27,37 +65,71 @@ export const printBill = async (bill: Bill) => {
             display: flex; 
             flex-direction: column; 
             justify-content: space-between;
-            position: relative; /* <--- CHANGED: Added relative positioning so the watermark stays inside this border */
-            z-index: 1;         /* <--- CHANGED: Added z-index context */
+            position: relative; 
+            z-index: 1;
           }
 
-          /* <--- NEW SECTION: Watermark Styling */
+          /* Watermark */
           .watermark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-45deg); /* Center and rotate */
-  
-  font-size: 80px;       /* Increased size for better visibility */
-  font-weight: 900;
-  
-  /* Use RGBA for color: Black with 0.1 (10%) Opacity */
-  color: rgba(0, 0, 0, 0.10); 
-  
-  /* <--- KEY FIX: Put it ON TOP of the text, not behind */
-  z-index: 9999;   
-  
-  text-align: center;
-  line-height: 90px;
-  white-space: nowrap;
-  pointer-events: none;  /* Ensures it doesn't block any interaction */
-}
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 80px;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.10); 
+            z-index: 9999; 
+            text-align: center;
+            line-height: 90px;
+            white-space: nowrap;
+            pointer-events: none;
+          }
           
+          /* --- Company Header Section --- */
+          .company-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            border-bottom: 2px solid #000;
+            background-color: transparent;
+            position: relative;
+          }
+          
+          .company-logo-img {
+            width: 60px;
+            height: 60px;
+            margin-right: 20px;
+            object-fit: contain;
+          }
+
+          .company-details {
+            text-align: center;
+          }
+
+          .company-name {
+            font-size: 28px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+            line-height: 1;
+          }
+
+          .company-tagline {
+            font-size: 10px;
+            margin-top: 5px;
+            font-weight: bold;
+            color: #444;
+          }
+          /* ----------------------------------- */
+
+          /* Existing Sub-Header (Bill To / Bill No) */
           .header { 
             display: flex; 
             border-bottom: 2px solid #000; 
             flex-shrink: 0; 
-            background-color: transparent; /* <--- CHANGED: Ensure background is transparent so watermark shows through */
+            background-color: transparent; 
           }
           .header-left { flex: 1; padding: 10px; border-right: 1px solid #000; }
           .header-right { width: 300px; padding: 10px; }
@@ -69,7 +141,7 @@ export const printBill = async (bill: Bill) => {
             display: flex; 
             flex-direction: column; 
             overflow: hidden; 
-            background-color: transparent; /* <--- CHANGED: Transparent background */
+            background-color: transparent; 
           }
           
           table { 
@@ -77,7 +149,7 @@ export const printBill = async (bill: Bill) => {
             height: 100%; 
             border-collapse: collapse; 
             table-layout: fixed; 
-            background-color: transparent; /* <--- CHANGED: Transparent background */
+            background-color: transparent; 
           }
           
           th, td { border-right: 1px solid #000; padding: 5px; word-wrap: break-word; }
@@ -106,14 +178,14 @@ export const printBill = async (bill: Bill) => {
             font-weight: bold; 
             display: flex; 
             justify-content: space-between; 
-            background-color: white; /* <--- CHANGED: Keep footer white to make text readable over watermark */
+            background-color: white; 
           }
           
           .footer-bottom { 
             flex-shrink: 0; 
             display: flex; 
             height: 120px;
-            background-color: white; /* <--- CHANGED: Keep footer white */
+            background-color: white; 
           }
           .footer-left { flex: 1; padding: 10px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: space-between; }
           .footer-right { width: 250px; display: flex; flex-direction: column; }
@@ -135,6 +207,19 @@ export const printBill = async (bill: Bill) => {
             ISAII BILLSUITE<br>SAMPLE BILL
           </div>
           
+          <!-- NEW: Logo and Company Name Header -->
+          <div class="company-header">
+            <!-- Logo Image -->
+            <img src="${logoBase64}" class="company-logo-img" alt="Logo" />
+            
+            <!-- Company Text -->
+            <div class="company-details">
+              <div class="company-name">JK CAR SERVICE</div>
+              <div class="company-tagline">Premium Auto Care & Service Center</div>
+            </div>
+          </div>
+
+          <!-- Existing Info Header -->
           <div class="header">
             <div class="header-left">
               <div class="row"><strong>Bill To:</strong></div>

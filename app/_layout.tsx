@@ -7,13 +7,6 @@ import { StatusBar } from 'expo-status-bar';
 
 
 
-const RootNav = ()=> {
-  return(
-    <Stack>
-
-    </Stack>
-  );
-}
 
 
 export default function RootLayout() {
