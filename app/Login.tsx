@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { useRouter } from 'expo-router';
 import { loginSuccess } from '../redux/authSlice'; // Adjust path as needed
@@ -51,6 +51,11 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      
+      <Image 
+        source={require("../assets/logo-isaii.png")}
+        style={styles.logo}
+      />
       <Text style={styles.header}>Enter Access PIN</Text>
       
       <TextInput
@@ -86,6 +91,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 20,
+  },
+  logo:{
+    height:100,
+    width:100,
+    marginBottom:20,
   },
   header: {
     fontSize: 24,

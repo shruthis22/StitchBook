@@ -1,137 +1,319 @@
+import { Asset } from 'expo-asset';
 import * as Print from 'expo-print';
-import { shareAsync } from 'expo-sharing';
+import { shareAsync } from "expo-sharing";
 import { Bill } from '../redux/billSlice';
 
-// Helper to convert number to words (Simplified version)
+
+
 const numberToWords = (num: number): string => {
-  // You can replace this with a library like 'number-to-words' for better accuracy
   return `${num} (Only)`;
 };
 
+
+
+const convertUriToBase64 = async (uri: string): Promise<string> => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      resolve(reader.result as string);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
+
+
+
+
+
 export const shareBill = async (bill: Bill) => {
 
-  // Separate Products and Labour for the layout
   const products = bill.items.filter(item => item.type === 'product');
   const labour = bill.items.filter(item => item.type === 'labour');
 
-  // HTML Content matching your reference image
+
+  const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
+  await logoAsset.downloadAsync();
+
+  let logoBase64 = "";
+  if (logoAsset.localUri) {
+    try {
+      logoBase64 = await convertUriToBase64(logoAsset.localUri);
+    } catch (e) {
+      console.error("Failed to load logo", e);
+      logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+    }
+  }
+
+
   const html = `
     <html>
       <head>
+
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+
         <style>
-          @page { margin: 20px; }
-          body { font-family: 'Helvetica', sans-serif; font-size: 12px; color: #000; }
+          @page { margin: 15px; }
+          * { box-sizing: border-box; }
+          body { font-family: 'Helvetica', sans-serif; font-size: 12px; color: #000; margin: 0; padding: 0; }
           
-          /* Main Container: Flexbox to push footer to bottom */
+          /* Main Container */
           .container { 
             border: 2px solid #000; 
-            height: 98vh; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: space-between; 
+            min-height: 98vh; /* Allow growth */
+            /* Removed fixed height and flex to allow multi-page flow */
+            display: block;
+            position: relative;
           }
-          
-          /* Header (Don't shrink) */
-          .header { 
-            display: flex; 
-            border-bottom: 2px solid #000; 
-            flex-shrink: 0; 
+
+          /* --- Header Section --- */
+          .header-section {
+            display: flex;
+            border-bottom: 2px solid #000;
+            height: 180px; 
+            /* flex-shrink: 0; removed as not in flex container anymore */
           }
-          .header-left { flex: 1; padding: 10px; border-right: 1px solid #000; }
-          .header-right { width: 300px; padding: 10px; }
-          .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-          
-          /* Table Container: Takes all remaining space */
+
+          /* Left Header */
+          .header-left {
+            width: 50%;
+            border-right: 2px solid #000;
+            padding: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+          }
+
+          .logo-container {
+            width: 80px;
+            text-align: center;
+            margin-right: 10px;
+          }
+          .logo-img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+          }
+
+          .company-info {
+            flex: 1;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+          .company-name {
+            font-size: 18px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: #000;
+          }
+
+          /* Right Header */
+          .header-right {
+            width: 50%;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-size: 13px;
+            line-height: 1.6;
+          }
+          .info-row {
+            display: flex;
+          }
+          .info-label {
+            width: 100px;
+            font-weight: bold;
+          }
+          .info-val {
+            font-weight: 500;
+          }
+
+          /* --- Mileage Strip --- */
+          .mileage-strip {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #000;
+            padding: 5px 15px;
+            font-weight: bold;
+            background-color: #f9f9f9;
+            font-size: 13px;
+            /* flex-shrink: 0; removed */
+          }
+
+          /* --- Table Section --- */
           .table-container { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; 
+            /* flex: 1; removed */
+            width: 100%;
+            display: block; 
           }
           
-          /* FIXED: Table takes 100% height to fill the flex container */
           table { 
             width: 100%; 
-            height: 100%; 
-            border-collapse: collapse; 
-            table-layout: fixed; 
+            border-collapse: separate; 
+            border-spacing: 0; /* CRITICAL: Removes gaps between cells */
           }
           
-          th, td { border-right: 1px solid #000; padding: 5px; word-wrap: break-word; }
-          th { border-bottom: 1px solid #000; background-color: #f0f0f0; font-weight: bold; text-align: center; height: 30px; } 
-          td { border-bottom: none; } /* Vertical lines only for body */
+          th { 
+            border-bottom: 2px solid #000; 
+            border-right: 1px solid #000;
+            padding: 8px; 
+            text-align: center;
+            font-weight: bold;
+            background-color: #eee;
+            height: 30px; 
+          }
           
-          /* FIXED: Force content rows to be minimum height so they don't stretch ugly */
-          .item-row { height: 1px; }
-          
-          /* FIXED: Filler row takes all remaining space */
-          .filler-row { height: 100%; }
-          .filler-row td { vertical-align: top; }
+          /* Ensure header border matches column border logic */
+          th:last-child { border-right: none; }
 
-          /* Column Widths */
-          .col-sno { width: 40px; text-align: center; }
-          .col-part { width: auto; text-align: left; }
+          thead { display: table-header-group; } /* Repeats header on new pages */
+
+          tbody tr {
+            height: auto; /* Allow natural height */
+            page-break-inside: avoid; /* Prevent row splitting */
+          }
+
+          /* Filler row expands to fill space */
+          tr.filler-row {
+            height: 50px; /* Give it some minimum height if needed, or remove if not using flex grow */
+            display: none; /* Hide filler row in multi-page layout as we just want content to flow */
+          }
+          
+          td { 
+            border-bottom: 1px solid #ccc; /* Add light row separators for readablity helps in multi-page */
+            border-right: 1px solid #000; 
+            padding: 5px 8px;
+            vertical-align: top;
+          }
+          /* We need a bottom border for the last row of the table? Or strictly stick to the outer border? 
+             With multi-page, table borders are tricky. keeping verticals. */
+
+          /* Remove right border from last column */
+          .col-amt, th.col-amt { border-right: none; }
+
+          .col-sno { width: 50px; text-align: center; }
+          .col-part { text-align: left; }
           .col-qty { width: 60px; text-align: center; }
           .col-rate { width: 80px; text-align: right; }
-          .col-amt { width: 90px; text-align: right; border-right: none; }
+          .col-amt { width: 100px; text-align: right; }
 
-          /* Labour Section Header */
-          .labour-header td { font-weight: bold; padding-top: 15px; text-decoration: underline; border-bottom: none; }
-          .labour-header { height: 1px; }
-
-          /* Footer Info Bar (Don't shrink) */
-          .footer-info { 
-            flex-shrink: 0; 
-            border-top: 2px solid #000; 
-            border-bottom: 1px solid #000; 
-            padding: 5px; 
-            font-weight: bold; 
-            display: flex; 
-            justify-content: space-between; 
+          .labour-header td {
+             font-weight: bold;
+             text-decoration: underline;
+             padding-top: 10px;
+             height: auto; 
+             border-right: 1px solid #000; 
+             border-bottom: none;
           }
-          
-          /* Bottom Summary (Don't shrink) */
-          .footer-bottom { 
-            flex-shrink: 0; 
-            display: flex; 
-            height: 120px; 
-          }
-          .footer-left { flex: 1; padding: 10px; border-right: 1px solid #000; display: flex; flex-direction: column; justify-content: space-between; }
-          .footer-right { width: 250px; display: flex; flex-direction: column; }
-          
-          .summary-row { display: flex; border-bottom: 1px solid #000; }
-          .summary-label { flex: 1; padding: 5px; border-right: 1px solid #000; font-weight: bold; }
-          .summary-val { width: 90px; padding: 5px; text-align: right; }
-          .last-row { border-bottom: none; }
-          
-          .total-highlight { background-color: #e0e0e0; }
+          .labour-header td:last-child { border-right: none; }
 
-          .signatures { display: flex; justify-content: space-between; margin-top: 30px; align-items: flex-end; }
+          /* --- Footer Section --- */
+          .footer {
+            height: 120px;
+            border-top: 2px solid #000;
+            display: flex;
+            page-break-inside: avoid; /* Keep footer together */
+          }
+
+          .footer-remarks {
+            flex: 1;
+            border-right: 2px solid #000;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+          }
+          .remarks-title { font-weight: bold; margin-bottom: 5px; }
+
+          .footer-totals {
+            width: 35%;
+            display: flex;
+            flex-direction: column;
+          }
+
+          .total-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #000;
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #f0f0f0;
+          }
+
+          .sign-box {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 10px;
+            font-weight: bold;
+            font-style: italic;
+          }
+
         </style>
+
       </head>
+
       <body>
+
         <div class="container">
-          
-          <!-- HEADER -->
-          <div class="header">
+
+          <div class="header-section">
             <div class="header-left">
-              <div class="row"><strong>Bill To:</strong></div>
-              <div style="margin-left: 20px;">
-                <div class="title">${bill.customerName.toUpperCase()}</div>
-                <div>Mob No: ${bill.customerPhone || 'N/A'}</div>
+              <div class="logo-container">
+                 <img src="${logoBase64}" class="logo-img" />
+              </div>
+              <div class="company-info">
+                <div class="company-name">JK CARS & DECORS</div>
+                <div>Address: Indhra Nagar,</div>
+                <div>Konavaikkal, Vasan College,</div>
+                <div>Bhavani, Tamil Nadu 638316</div>
+                <div style="margin-top: 5px;"><strong>Phone: 96981 92330</strong></div>
               </div>
             </div>
+            
             <div class="header-right">
-              <div class="row"><span>Bill No:</span> <strong>${bill.id}</strong></div>
-              <div class="row"><span>Date:</span> <strong>${bill.date}</strong></div>
-              <div class="row"><span>Vec No:</span> <strong>${bill.vehicleNumber || 'N/A'}</strong></div>
+               <div class="info-row">
+                 <span class="info-label">Bill To:</span>
+                 <span class="info-val">${bill.customerName}</span>
+               </div>
+               <div class="info-row">
+                 <span class="info-label">Phone:</span>
+                 <span class="info-val">${bill.customerPhone || '-'}</span>
+               </div>
+               <div class="info-row" style="margin-top: 10px;">
+                 <span class="info-label">Bill No:</span>
+                 <span class="info-val">${bill.id}</span>
+               </div>
+               <div class="info-row">
+                 <span class="info-label">Date:</span>
+                 <span class="info-val">${new Date(bill.date).toLocaleDateString()}</span>
+               </div>
+               <div class="info-row" style="margin-top: 10px;">
+                 <span class="info-label">Vehicle Name:</span>
+                 <span class="info-val">${bill.vehicleName || '-'}</span>
+               </div>
+               <div class="info-row">
+                 <span class="info-label">Vehicle No:</span>
+                 <span class="info-val">${bill.vehicleNumber || '-'}</span>
+               </div>
             </div>
           </div>
 
-          <!-- TABLE -->
+          <div class="mileage-strip">
+            <span>Current KM: ${bill.currentKm || '0'}</span>
+            <span>Next KM: ${bill.nextServiceKm || '0'}</span>
+          </div>
+
           <div class="table-container">
+
             <table>
               <thead>
                 <tr>
@@ -140,102 +322,75 @@ export const shareBill = async (bill: Bill) => {
                   <th class="col-qty">Qty</th>
                   <th class="col-rate">Rate</th>
                   <th class="col-amt">Amount</th>
+
                 </tr>
               </thead>
               <tbody>
-                <!-- PRODUCTS -->
                 ${products.map((item, index) => `
-                  <tr class="item-row">
+                  <tr>
                     <td class="col-sno">${index + 1}</td>
                     <td class="col-part">${item.name}</td>
                     <td class="col-qty">${item.qty}</td>
-                    <td class="col-rate">${item.rate.toFixed(2)}</td>
-                    <td class="col-amt">${item.amount.toFixed(2)}</td>
+                    <td class="col-rate">${item.rate}</td>
+                    <td class="col-amt">${item.amount}</td>
                   </tr>
                 `).join('')}
 
-                <!-- LABOUR HEADER -->
                 ${labour.length > 0 ? `
                   <tr class="labour-header">
-                    <td class="col-sno"></td>
-                    <td class="col-part">Labour Service Details</td>
+                    <td></td>
+                    <td class="col-part">Labour Charges</td>
                     <td class="col-qty"></td>
                     <td class="col-rate"></td>
                     <td class="col-amt"></td>
                   </tr>
                 ` : ''}
 
-                <!-- LABOUR ITEMS -->
-                 ${labour.map((item, index) => `
-                  <tr class="item-row">
-                    <td class="col-sno">${products.length + index + 1}</td>
+                ${labour.map((item, index) => `
+                  <tr>
+                    <td class="col-sno">${index + 1}</td>
                     <td class="col-part">${item.name}</td>
                     <td class="col-qty">-</td>
-                    <td class="col-rate">${item.rate.toFixed(2)}</td>
-                    <td class="col-amt">${item.amount.toFixed(2)}</td>
+                    <td class="col-rate">${item.rate}</td>
+                    <td class="col-amt">${item.amount}</td>
                   </tr>
                 `).join('')}
-
-                <!-- FILLER ROW: This empty row stretches to fill the rest of the page -->
+                
                 <tr class="filler-row">
-                    <td class="col-sno"></td>
-                    <td class="col-part"></td>
-                    <td class="col-qty"></td>
-                    <td class="col-rate"></td>
-                    <td class="col-amt"></td>
+                  <td class="col-sno">&nbsp;</td>
+                  <td class="col-part">&nbsp;</td>
+                  <td class="col-qty">&nbsp;</td>
+                  <td class="col-rate">&nbsp;</td>
+                  <td class="col-amt">&nbsp;</td>
                 </tr>
 
               </tbody>
             </table>
           </div>
 
-          <!-- FOOTER START -->
-          <div class="footer-info">
-            <span>Current KM: ${bill.currentKm || '0'}</span>
-            <span>Next Service KM: ${bill.nextServiceKm || '0'}</span>
-          </div>
-
-          <div class="footer-bottom">
-            <div class="footer-left">
-              <div>
-                <div><strong>Rupees:</strong> ${numberToWords(bill.grandTotal)}</div>
-                <div style="margin-top: 5px;"><strong>Remarks:</strong> ${bill.remarks || '-'}</div>
-              </div>
-              
-              <div class="signatures">
-                <span>Verified By</span>
-                <span>Welcome You All</span>
-                <span>For Service Point</span>
-              </div>
+          <div class="footer">
+            <div class="footer-remarks">
+               <div class="remarks-title">Remarks:</div>
+               <div>${bill.remarks || ''}</div>
             </div>
-
-            <div class="footer-right">
-              <div class="summary-row total-highlight">
-                <div class="summary-label">Total</div>
-                <div class="summary-val">${bill.grandTotal.toFixed(2)}</div>
-              </div>
-              <div class="summary-row">
-                <div class="summary-label">Bill Paid</div>
-                <div class="summary-val">0.00</div>
-              </div>
-              <div class="summary-row">
-                <div class="summary-label">Advance</div>
-                <div class="summary-val">0.00</div>
-              </div>
-              <div class="summary-row last-row">
-                <div class="summary-label">Balance</div>
-                <div class="summary-val">${bill.grandTotal.toFixed(2)}</div>
-              </div>
+            <div class="footer-totals">
+               <div class="total-box">
+                  <span>Total:</span>
+                  <span>${bill.grandTotal.toFixed(2)}</span>
+               </div>
+               <div class="sign-box">
+                  Verified By
+               </div>
             </div>
           </div>
 
         </div>
       </body>
+
     </html>
   `;
-
-    // Print Logic
-    const { uri } = await Print.printToFileAsync({ html });
-    console.log('File has been saved to:', uri);
-    await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+  // Print Logic
+  const { uri } = await Print.printToFileAsync({ html });
+  console.log('File has been saved to:', uri);
+  await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };
