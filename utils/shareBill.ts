@@ -67,6 +67,7 @@ export const shareBill = async (bill: Bill) => {
             /* Removed fixed height and flex to allow multi-page flow */
             display: block;
             position: relative;
+            padding-bottom: 120px; /* Ensure space for footer */
           }
 
           /* --- Header Section --- */
@@ -219,6 +220,10 @@ export const shareBill = async (bill: Bill) => {
             border-top: 2px solid #000;
             display: flex;
             page-break-inside: avoid; /* Keep footer together */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
           }
 
           .footer-remarks {
@@ -378,6 +383,12 @@ export const shareBill = async (bill: Bill) => {
                   <span>Total:</span>
                   <span>${bill.grandTotal.toFixed(2)}</span>
                </div>
+               ${(bill.advancePayment || 0) > 0 ? `
+               <div class="total-box">
+                  <span>Advance Paid:</span>
+                  <span>${(bill.advancePayment || 0).toFixed(2)}</span>
+               </div>
+               ` : ''}
                <div class="sign-box">
                   Verified By
                </div>
@@ -389,8 +400,9 @@ export const shareBill = async (bill: Bill) => {
 
     </html>
   `;
-  // Print Logic
+
   const { uri } = await Print.printToFileAsync({ html });
+
   console.log('File has been saved to:', uri);
   await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };

@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 
 
@@ -38,6 +38,7 @@ export interface Bill {
   currentKm?: number;
   nextServiceKm?: number;
   vehicleName?: string;
+  advancePayment?: number;
 }
 
 export interface BillingState {
@@ -76,7 +77,7 @@ export const fetchProductsFromGoogleSheets = createAsyncThunk(
       if (data.status === 'error') throw new Error(data.message);
 
       return data as Product[];
-    } 
+    }
     catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -106,20 +107,27 @@ export const saveProductToGoogleSheets = createAsyncThunk(
 
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
       const response = await fetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         // We add _sheetType so Apps Script knows where to put it
         body: JSON.stringify({ ...newProduct, _sheetType: 'products' }),
+        signal: controller.signal
       });
-      
+
+      clearTimeout(timeoutId);
 
       const result = await response.json();
       if (result.status === 'error') throw new Error(result.message);
       return newProduct;
-    } 
+    }
     catch (error: any) {
+      if (error.name === 'AbortError') {
+        return rejectWithValue("Request timed out");
+      }
       return rejectWithValue(error.message);
     }
 
@@ -201,7 +209,7 @@ const billingSlice = createSlice({
   reducers: {},
 
   extraReducers: (builder) => {
-    
+
     builder
       // Products
       .addCase(fetchProductsFromGoogleSheets.fulfilled, (state, action) => {

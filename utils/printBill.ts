@@ -67,6 +67,7 @@ export const printBill = async (bill: Bill) => {
             /* Removed fixed height and flex to allow multi-page flow */
             display: block;
             position: relative;
+            padding-bottom: 120px; /* Ensure space for footer */
           }
 
           /* --- Header Section --- */
@@ -110,7 +111,7 @@ export const printBill = async (bill: Bill) => {
             font-weight: 900;
             text-transform: uppercase;
             margin-bottom: 5px;
-            color: #000;
+            color: #2fd715ff;
           }
 
           /* Right Header */
@@ -219,6 +220,10 @@ export const printBill = async (bill: Bill) => {
             border-top: 2px solid #000;
             display: flex;
             page-break-inside: avoid; /* Keep footer together */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
           }
 
           .footer-remarks {
@@ -271,7 +276,7 @@ export const printBill = async (bill: Bill) => {
                  <img src="${logoBase64}" class="logo-img" />
               </div>
               <div class="company-info">
-                <div class="company-name">JK CARS & DECORS</div>
+                <div class="company-name">JK SERVICE & DECORS</div>
                 <div>Address: Indhra Nagar,</div>
                 <div>Konavaikkal, Vasan College,</div>
                 <div>Bhavani, Tamil Nadu 638316</div>
@@ -378,6 +383,12 @@ export const printBill = async (bill: Bill) => {
                   <span>Total:</span>
                   <span>${bill.grandTotal.toFixed(2)}</span>
                </div>
+               ${(bill.advancePayment || 0) > 0 ? `
+               <div class="total-box">
+                  <span>Advance Paid:</span>
+                  <span>${(bill.advancePayment || 0).toFixed(2)}</span>
+               </div>
+               ` : ''}
                <div class="sign-box">
                   Verified By
                </div>

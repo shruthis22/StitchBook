@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, Alert,
-  ActivityIndicator,
-  FlatList,
-  RefreshControl
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../redux/store';
-import { saveProductToGoogleSheets, fetchProductsFromGoogleSheets, Product } from '../../../redux/billSlice';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProductsFromGoogleSheets, Product, saveProductToGoogleSheets } from '../../../redux/billSlice';
+import { AppDispatch, RootState } from '../../../redux/store';
 
 
 
@@ -46,17 +52,7 @@ export default function AddProductScreen() {
       // Dispatch async action to save to Google Sheets
       await dispatch(saveProductToGoogleSheets(newProduct)).unwrap();
 
-      Alert.alert('Success', 'Product added to Google Sheets', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setName('');
-            setPrice('');
-            // Optional: Go back after save
-            // navigation.goBack();
-          }
-        }
-      ]);
+      ToastAndroid.show('Product added', ToastAndroid.SHORT);
     } catch (error: any) {
       Alert.alert('Error', 'Failed to save product: ' + error.message);
     } finally {
@@ -102,6 +98,7 @@ export default function AddProductScreen() {
         data={[...products].reverse()} // Show newest first
         keyExtractor={(item) => item.id}
         renderItem={renderProductItem}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
           <RefreshControl
@@ -303,7 +300,7 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000', 
+    color: '#000',
   },
   emptyText: {
     textAlign: 'center',

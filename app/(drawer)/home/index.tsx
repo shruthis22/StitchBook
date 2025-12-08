@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
-import React, { useMemo, useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator // Added for loading spinner
-  ,
+  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -17,16 +18,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bill, Product, saveBillToGoogleSheets, fetchProductsFromGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
+import { Bill, fetchProductsFromGoogleSheets, Product, saveBillToGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
 import { AppDispatch, RootState } from '../../../redux/store'; // Added AppDispatch for async thunks
 import { printBill } from '../../../utils/printBill';
-import { StatusBar } from 'expo-status-bar';
-
 
 
 
 export default function BillingScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
 
   // Typed dispatch is recommended for AsyncThunks
   const dispatch = useDispatch<AppDispatch>();
@@ -56,6 +56,7 @@ export default function BillingScreen() {
   const [remarks, setRemarks] = useState("");
   const [currentKm, setCurrentKm] = useState("");
   const [nextServiceKm, setNextServiceKm] = useState("");
+  const [advancePayment, setAdvancePayment] = useState("");
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -63,18 +64,19 @@ export default function BillingScreen() {
   // New Loading State
   const [isSaving, setIsSaving] = useState(false);
 
-  const [cartItems, setCartItems] = useState<Array<{
+  const [cartItems, setCartItems] = useState<{
     id: string;
     name: string;
     qty: number;
     rate: number;
     amount: number;
     type: 'product' | 'labour'
-  }>>([]);
+  }[]>([]);
 
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.amount, 0), [cartItems]);
   const tax = subtotal * 0; // 0% Tax
-  const grandTotal = subtotal + tax;
+  const advanceVal = parseFloat(advancePayment) || 0;
+  const grandTotal = subtotal + tax - advanceVal;
 
   const handleSearchProduct = (text: string) => {
     setProductName(text);
@@ -149,6 +151,7 @@ export default function BillingScreen() {
 
   // --- UPDATED SAVE FUNCTION ---
   const handlePrintBill = async () => {
+
     if (cartItems.length === 0) {
       Alert.alert('Empty Bill', 'Please add items before printing.');
       return;
@@ -180,6 +183,7 @@ export default function BillingScreen() {
       remarks: remarks,
       currentKm: currentKm ? parseFloat(currentKm) : 0,
       nextServiceKm: nextServiceKm ? parseFloat(nextServiceKm) : 0,
+      advancePayment: advancePayment ? parseFloat(advancePayment) : 0,
     };
 
     try {
@@ -203,12 +207,13 @@ export default function BillingScreen() {
             setCurrentKm('');
             setNextServiceKm('');
             setVehicleName('');
+            setAdvancePayment('');
           }
         }
       ]);
 
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to save bill: ' + (error.message || "Unknown error"));
+      Alert.alert("Failed to Save", "Check you Internet");
       console.error(error);
     } finally {
       // Stop Loading
@@ -230,7 +235,9 @@ export default function BillingScreen() {
               <Ionicons name="menu" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.cardTitle}>Billing Home</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/(drawer)/history')}
+            >
               <Ionicons name="time-outline" size={24} color="#333" />
             </TouchableOpacity>
           </View>
@@ -263,34 +270,34 @@ export default function BillingScreen() {
 
               {showDropdown && (
                 <View style={styles.dropdownList}>
-                  <ScrollView 
-                   keyboardShouldPersistTaps="handled" 
-                   nestedScrollEnabled={true} // Important for Android
-                   style={{ maxHeight: 200 }} // Ensure ScrollView respects the height
-                >
+                  <ScrollView
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled={true} // Important for Android
+                    style={{ maxHeight: 200 }} // Ensure ScrollView respects the height
+                  >
 
-                  {filteredProducts.length === 0 ? (
+                    {filteredProducts.length === 0 ? (
 
-                    <View style={styles.noResult}>
-                      <Text style={{ color: '#999' }}>No matches. Use as custom item.</Text>
-                    </View>
+                      <View style={styles.noResult}>
+                        <Text style={{ color: '#999' }}>No matches. Use as custom item.</Text>
+                      </View>
 
-                  ) : (
-                    filteredProducts.map((item) => (
+                    ) : (
+                      filteredProducts.map((item) => (
 
-                      <TouchableOpacity
-                        key={item.id}
-                        style={styles.dropdownItem}
-                        onPress={() => handleSelectProduct(item)}
-                      >
+                        <TouchableOpacity
+                          key={item.id}
+                          style={styles.dropdownItem}
+                          onPress={() => handleSelectProduct(item)}
+                        >
 
-                        <Text style={styles.dropdownItemName}>{item.name}</Text>
-                        <Text style={styles.dropdownItemPrice}>₹{item.price}</Text>
+                          <Text style={styles.dropdownItemName}>{item.name}</Text>
+                          <Text style={styles.dropdownItemPrice}>₹{item.price}</Text>
 
 
-                      </TouchableOpacity>
-                    ))
-                  )}
+                        </TouchableOpacity>
+                      ))
+                    )}
 
                   </ScrollView>
                 </View>
@@ -499,6 +506,22 @@ export default function BillingScreen() {
             </View>
           </View>
 
+          {/* Advance Payment */}
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Payment Details</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Advance Payment (₹)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 500"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                value={advancePayment}
+                onChangeText={setAdvancePayment}
+              />
+            </View>
+          </View>
+
           {/* Footer Button - Updated with Loading State */}
           <View style={styles.footerContainer}>
             <TouchableOpacity
@@ -612,7 +635,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
     zIndex: 1000,
-    overflow:"hidden"
+    overflow: "hidden"
   },
   dropdownItem: {
     flexDirection: 'row',
