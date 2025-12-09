@@ -1,31 +1,13 @@
 import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
-import { shareAsync } from "expo-sharing";
+import { shareAsync } from 'expo-sharing';
+import { Alert } from 'react-native';
 import { Bill } from '../redux/billSlice';
-
-
 
 const numberToWords = (num: number): string => {
   return `${num} (Only)`;
 };
-
-
-
-const convertUriToBase64 = async (uri: string): Promise<string> => {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
-
 
 
 
@@ -41,9 +23,20 @@ export const shareBill = async (bill: Bill) => {
   let logoBase64 = "";
   if (logoAsset.localUri) {
     try {
-      logoBase64 = await convertUriToBase64(logoAsset.localUri);
-    } catch (e) {
+      // Robust method: Copy to cache first to avoid access issues in production
+      const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
+      await FileSystem.copyAsync({
+        from: logoAsset.localUri,
+        to: targetPath
+      });
+
+      const base64 = await FileSystem.readAsStringAsync(targetPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      logoBase64 = `data:image/png;base64,${base64}`;
+    } catch (e: any) {
       console.error("Failed to load logo", e);
+      Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
       logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
     }
   }
@@ -111,7 +104,7 @@ export const shareBill = async (bill: Bill) => {
             font-weight: 900;
             text-transform: uppercase;
             margin-bottom: 5px;
-            color: #000;
+            color: #2fd715ff;
           }
 
           /* Right Header */
@@ -276,7 +269,7 @@ export const shareBill = async (bill: Bill) => {
                  <img src="${logoBase64}" class="logo-img" />
               </div>
               <div class="company-info">
-                <div class="company-name">JK CARS & DECORS</div>
+                <div class="company-name">JK SERVICE & DECORS</div>
                 <div>Address: Indhra Nagar,</div>
                 <div>Konavaikkal, Vasan College,</div>
                 <div>Bhavani, Tamil Nadu 638316</div>
@@ -402,7 +395,9 @@ export const shareBill = async (bill: Bill) => {
   `;
 
   const { uri } = await Print.printToFileAsync({ html });
-
   console.log('File has been saved to:', uri);
+
+
+
   await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };

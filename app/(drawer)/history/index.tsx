@@ -1,16 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Platform
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '../../../redux/store';
-import { Bill, fetchBillsFromGoogleSheets } from "../../../redux/billSlice";
-import { useRouter, useNavigation } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { DrawerActions } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import DateTimePicker from '@react-native-community/datetimepicker'; 
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDispatch, useSelector } from 'react-redux';
+import { Bill, fetchBillsFromGoogleSheets } from "../../../redux/billSlice";
+import { AppDispatch, RootState } from '../../../redux/store';
 
 
 
@@ -77,18 +85,15 @@ export default function BillingHistoryScreen() {
 
     setRefreshing(true);
 
-    try 
-    {
+    try {
 
       await dispatch(fetchBillsFromGoogleSheets()).unwrap();
 
-    } 
-    catch (error) 
-    {
+    }
+    catch (error) {
       console.error("Refresh failed", error);
-    } 
-    finally 
-    {
+    }
+    finally {
       setRefreshing(false);
     }
   }, [dispatch]);
@@ -98,7 +103,7 @@ export default function BillingHistoryScreen() {
 
 
 
-  
+
   const showDatePicker = (mode: 'start' | 'end') => {
     setPickerMode(mode);
     setShowPicker(true);
@@ -145,9 +150,9 @@ export default function BillingHistoryScreen() {
 
     // 1. Text Search Filter
     const matchesSearch =
-      bill.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      bill.vehicleNumber.toLowerCase().includes(search.toLowerCase()) ||
-      bill.id.toLowerCase().includes(search.toLowerCase());
+      String(bill.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
+      String(bill.vehicleNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+      String(bill.id || '').toLowerCase().includes(search.toLowerCase());
 
     // 2. Status Filter
     const matchesStatus = filter === 'All' || bill.status === filter;
@@ -211,7 +216,7 @@ export default function BillingHistoryScreen() {
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
 
-        
+
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
@@ -295,7 +300,7 @@ export default function BillingHistoryScreen() {
           <FlatList
             data={filteredBills}
             renderItem={renderItem}
-            keyExtractor={item => item.id.toString()}
+            keyExtractor={item => (item.id || Math.random()).toString()}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={

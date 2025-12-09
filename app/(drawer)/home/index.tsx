@@ -93,7 +93,7 @@ export default function BillingScreen() {
 
   const handleSelectProduct = (product: Product) => {
     setProductName(product.name);
-    setRate(product.price);
+    setRate(String(product.price));
     setShowDropdown(false);
     Keyboard.dismiss();
   };
@@ -266,6 +266,7 @@ export default function BillingScreen() {
                 onFocus={() => {
                   if (productName) setShowDropdown(true);
                 }}
+                onSubmitEditing={() => setShowDropdown(false)}
               />
 
               {showDropdown && (
