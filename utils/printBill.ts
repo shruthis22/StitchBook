@@ -5,27 +5,12 @@ import { Bill } from '../redux/billSlice';
 
 
 
+import * as FileSystem from 'expo-file-system/legacy';
+
+
 const numberToWords = (num: number): string => {
   return `${num} (Only)`;
 };
-
-
-
-const convertUriToBase64 = async (uri: string): Promise<string> => {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
-
 
 
 
@@ -41,7 +26,10 @@ export const printBill = async (bill: Bill) => {
   let logoBase64 = "";
   if (logoAsset.localUri) {
     try {
-      logoBase64 = await convertUriToBase64(logoAsset.localUri);
+      const base64 = await FileSystem.readAsStringAsync(logoAsset.localUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      logoBase64 = `data:image/png;base64,${base64}`;
     } catch (e) {
       console.error("Failed to load logo", e);
       logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
