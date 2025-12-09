@@ -1,11 +1,8 @@
 import { Asset } from 'expo-asset';
-import * as Print from 'expo-print';
-import { Bill } from '../redux/billSlice';
-
-
-
-
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Print from 'expo-print';
+import { Alert } from 'react-native';
+import { Bill } from '../redux/billSlice';
 
 
 const numberToWords = (num: number): string => {
@@ -26,12 +23,20 @@ export const printBill = async (bill: Bill) => {
   let logoBase64 = "";
   if (logoAsset.localUri) {
     try {
-      const base64 = await FileSystem.readAsStringAsync(logoAsset.localUri, {
+      // Robust method: Copy to cache first to avoid access issues in production
+      const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
+      await FileSystem.copyAsync({
+        from: logoAsset.localUri,
+        to: targetPath
+      });
+
+      const base64 = await FileSystem.readAsStringAsync(targetPath, {
         encoding: FileSystem.EncodingType.Base64,
       });
       logoBase64 = `data:image/png;base64,${base64}`;
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to load logo", e);
+      Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
       logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
     }
   }
