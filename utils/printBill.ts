@@ -13,6 +13,8 @@ const numberToWords = (num: number): string => {
 
 export const printBill = async (bill: Bill) => {
 
+
+
   const products = bill.items.filter(item => item.type === 'product');
   const labour = bill.items.filter(item => item.type === 'labour');
 
@@ -25,7 +27,9 @@ export const printBill = async (bill: Bill) => {
   await godAsset.downloadAsync();
 
   let logoBase64 = "";
+
   if (logoAsset.localUri) {
+
     try {
       // Robust method: Copy to cache first to avoid access issues in production
       const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
@@ -38,7 +42,8 @@ export const printBill = async (bill: Bill) => {
         encoding: FileSystem.EncodingType.Base64,
       });
       logoBase64 = `data:image/png;base64,${base64}`;
-    } catch (e: any) {
+    }
+    catch (e: any) {
       console.error("Failed to load logo", e);
       Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
       logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
@@ -187,12 +192,12 @@ export const printBill = async (bill: Bill) => {
             flex: 1;
             width: 100%;
             display: block;
-            /* Vertical Lines Gradient - Keeping for empty space filling */
+            /* Vertical Lines Gradient - Consistent 2px width */
             background: linear-gradient(to right, 
               transparent 48px, #000 48px, #000 50px, transparent 50px,
-              transparent calc(100% - 241px), #000 calc(100% - 241px), #000 calc(100% - 240px), transparent calc(100% - 240px),
-              transparent calc(100% - 181px), #000 calc(100% - 181px), #000 calc(100% - 180px), transparent calc(100% - 180px),
-              transparent calc(100% - 101px), #000 calc(100% - 101px), #000 calc(100% - 100px), transparent calc(100% - 100px)
+              transparent calc(100% - 242px), #000 calc(100% - 242px), #000 calc(100% - 240px), transparent calc(100% - 240px),
+              transparent calc(100% - 182px), #000 calc(100% - 182px), #000 calc(100% - 180px), transparent calc(100% - 180px),
+              transparent calc(100% - 102px), #000 calc(100% - 102px), #000 calc(100% - 100px), transparent calc(100% - 100px)
             );
           }
           
@@ -205,7 +210,7 @@ export const printBill = async (bill: Bill) => {
           
           th { 
             border-bottom: 2px solid #000; 
-            border-right: 1px solid #000;
+            border-right: 2px solid #000;
             padding: 8px; 
             text-align: center;
             font-weight: bold;
@@ -233,7 +238,7 @@ export const printBill = async (bill: Bill) => {
           .col-sno { 
              width: 50px; 
              text-align: center; 
-             border-right: 2px solid #000 !important; /* Explicit black border */
+             /* Removed duplicate border to rely on gradient */
           }
           .col-part { text-align: left; }
           .col-qty { width: 60px; text-align: center; }
