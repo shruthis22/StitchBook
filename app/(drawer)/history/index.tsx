@@ -32,6 +32,20 @@ const parseDateString = (dateStr: string) => {
 
 
 
+// Helper to format date for display
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  // Check if date is valid
+  if (isNaN(date.getTime())) return dateString;
+
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'Paid': return { bg: '#D1FAE5', text: '#059669' };
@@ -200,7 +214,7 @@ export default function BillingHistoryScreen() {
         <View style={[styles.divider]} />
 
         <View style={styles.row}>
-          <Text style={styles.invoiceInfo}>Invoice {item.id} • {item.date}</Text>
+          <Text style={styles.invoiceInfo}>Invoice {item.id} • {formatDate(item.date)}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
           </View>

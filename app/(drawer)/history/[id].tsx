@@ -92,7 +92,7 @@ export default function BillDetailsScreen() {
           {/* Invoice Meta */}
           <View style={styles.card}>
             <Text style={styles.invoiceId}>Bill ID: {bill.id}</Text>
-            <Text style={styles.invoiceDate}>Date: {bill.date}</Text>
+            <Text style={styles.invoiceDate}>Date: {new Date(bill.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
             <View style={styles.divider} />
 
             <Text style={styles.sectionTitle}>Customer Information</Text>
