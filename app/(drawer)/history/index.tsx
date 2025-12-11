@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   RefreshControl,
@@ -17,20 +18,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bill, fetchBillsFromGoogleSheets } from "../../../redux/billSlice";
+import { Bill, deleteBillFromGoogleSheets, fetchBillsFromGoogleSheets } from "../../../redux/billSlice";
 import { AppDispatch, RootState } from '../../../redux/store';
-
-
-
-
 
 // Helper to parse "30 Nov 2025" into a JS Date object
 const parseDateString = (dateStr: string) => {
   return new Date(dateStr);
 };
-
-
-
 
 // Helper to format date for display
 const formatDate = (dateString: string) => {
@@ -55,16 +49,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-
-
-
-
-
 export default function BillingHistoryScreen() {
-
-
-
-
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -75,69 +60,39 @@ export default function BillingHistoryScreen() {
   const [filter, setFilter] = useState<'All' | 'Paid' | 'Pending'>('All');
   const [refreshing, setRefreshing] = useState(false);
 
-
-
-  // <--- CHANGED: Date Range State
+  // Date Range State
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'start' | 'end'>('start');
 
-
-
-
-
   useEffect(() => {
     dispatch(fetchBillsFromGoogleSheets());
   }, [dispatch]);
 
-
-
-
-
   const onRefresh = useCallback(async () => {
-
     setRefreshing(true);
-
     try {
-
       await dispatch(fetchBillsFromGoogleSheets()).unwrap();
-
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Refresh failed", error);
-    }
-    finally {
+    } finally {
       setRefreshing(false);
     }
   }, [dispatch]);
-
-
-
-
-
-
 
   const showDatePicker = (mode: 'start' | 'end') => {
     setPickerMode(mode);
     setShowPicker(true);
   };
 
-
-
-
   const onDateChange = (event: any, selectedDate?: Date) => {
-
-
     // Hide picker immediately on Android
     if (Platform.OS === 'android') setShowPicker(false);
 
     if (selectedDate) {
-
       if (pickerMode === 'start') {
         setStartDate(selectedDate);
-        // After picking start date, automatically prompt for end date (Optional UX)
-        // setTimeout(() => showDatePicker('end'), 500); 
       } else {
         // Set end date to end of that day
         const endOfDay = new Date(selectedDate);
@@ -147,21 +102,13 @@ export default function BillingHistoryScreen() {
     }
   };
 
-
-
   const clearDateFilter = () => {
     setStartDate(null);
     setEndDate(null);
   };
 
-
-
-
-
-  // <--- CHANGED: Filtering Logic
+  // Filtering Logic
   const filteredBills = bills.filter(bill => {
-
-
     // 1. Text Search Filter
     const matchesSearch =
       String(bill.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -182,14 +129,28 @@ export default function BillingHistoryScreen() {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-
-
-
-
+  const handleDelete = (id: string) => {
+    Alert.alert(
+      "Delete Bill",
+      "Are you sure you want to delete this bill?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dispatch(deleteBillFromGoogleSheets(id)).unwrap();
+            } catch (error: any) {
+              Alert.alert("Delete Failed", error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const renderItem = ({ item }: { item: Bill }) => {
-
-
     const statusStyle = getStatusColor(item.status);
 
     return (
@@ -201,8 +162,8 @@ export default function BillingHistoryScreen() {
             params: { id: item.id }
           });
         }}
+        activeOpacity={0.7}
       >
-
         <View style={styles.row}>
           <View>
             <Text style={styles.customerName}>{item.customerName}</Text>
@@ -215,11 +176,21 @@ export default function BillingHistoryScreen() {
 
         <View style={styles.row}>
           <Text style={styles.invoiceInfo}>Invoice {item.id} • {formatDate(item.date)}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+              <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
+            </View>
+
+            {/* Delete Button - Placed discreetly next to status */}
+            <TouchableOpacity
+              style={{ marginLeft: 12, padding: 4 }}
+              onPress={() => handleDelete(item.id)}
+            >
+              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            </TouchableOpacity>
           </View>
         </View>
-
 
       </TouchableOpacity>
     );
@@ -229,8 +200,6 @@ export default function BillingHistoryScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
-
-
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
@@ -253,8 +222,6 @@ export default function BillingHistoryScreen() {
           </View>
 
           <View style={styles.chipsContainer}>
-
-
             {startDate || endDate ? (
               <TouchableOpacity style={[styles.dateChip, styles.activeChip]} onPress={clearDateFilter}>
                 <Ionicons name="close-circle" size={16} color="#1E40AF" />
@@ -270,7 +237,6 @@ export default function BillingHistoryScreen() {
                 <Text style={styles.chipText}>Date Range</Text>
               </TouchableOpacity>
             )}
-
 
             {startDate && !endDate && (
               <TouchableOpacity style={[styles.dateChip, { marginLeft: 0, backgroundColor: '#FEF3C7' }]} onPress={() => showDatePicker('end')}>
@@ -294,14 +260,13 @@ export default function BillingHistoryScreen() {
           </View>
         </View>
 
-
         {showPicker && (
           <DateTimePicker
             value={pickerMode === 'start' ? (startDate || new Date()) : (endDate || new Date())}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={onDateChange}
-            maximumDate={new Date()} // Can't select future dates
+            maximumDate={new Date()}
           />
         )}
 
@@ -334,7 +299,6 @@ export default function BillingHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-
   safeArea: {
     flex: 1,
     backgroundColor: '#fff'
@@ -427,7 +391,7 @@ const styles = StyleSheet.create({
   chipsContainer: {
     flexDirection: 'row',
     marginTop: 12,
-    flexWrap: 'wrap' // Added to handle multiple date chips
+    flexWrap: 'wrap'
   },
   dateChip: {
     flexDirection: 'row',
@@ -438,7 +402,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 8,
-    marginBottom: 4 // Added for wrap spacing
+    marginBottom: 4
   },
   filterChip: {
     borderWidth: 1,
@@ -448,7 +412,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginRight: 8,
     backgroundColor: '#FFF',
-    marginBottom: 4 // Added for wrap spacing
+    marginBottom: 4
   },
   activeChip: {
     backgroundColor: '#DBEAFE',

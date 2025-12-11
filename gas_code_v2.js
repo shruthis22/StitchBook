@@ -1,0 +1,116 @@
+// --- CONFIGURATION ---
+const SHEET_BILLS = 'Bills';
+const SHEET_PRODUCTS = 'Products';
+
+function doGet(e) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Check URL parameter ?type=products or ?type=bills
+    const type = e.parameter.type || 'bills';
+    const sheetName = type === 'products' ? SHEET_PRODUCTS : SHEET_BILLS;
+
+    const sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Sheet not found' }))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const data = sheet.getDataRange().getValues();
+    // Handle empty sheet case
+    if (data.length === 0) {
+        return ContentService.createTextOutput(JSON.stringify([]))
+            .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const headers = data[0];
+    const rows = data.slice(1);
+
+    const result = rows.map((row) => {
+        let obj = {};
+        headers.forEach((header, index) => {
+            // Parse 'items' only if we are reading bills
+            if (header === 'items' && row[index] && type === 'bills') {
+                try {
+                    obj[header] = JSON.parse(row[index]);
+                } catch (e) {
+                    obj[header] = [];
+                }
+            } else {
+                obj[header] = row[index];
+            }
+        });
+        return obj;
+    }).reverse();
+
+    return ContentService.createTextOutput(JSON.stringify(result))
+        .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+    var lock = LockService.getScriptLock();
+    lock.tryLock(10000);
+
+    try {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const body = JSON.parse(e.postData.contents);
+        const action = body.action; // 'delete' or undefined (save)
+
+        // Determine which sheet to write to based on a hidden flag
+        // Default to Bills if not specified
+        const type = body.type || body._sheetType || 'bills';
+        const sheetName = type === 'products' ? SHEET_PRODUCTS : SHEET_BILLS;
+
+        let sheet = ss.getSheetByName(sheetName);
+        if (!sheet) {
+            // Auto-create if missing (failsafe)
+            sheet = ss.insertSheet(sheetName);
+        }
+
+        // --- HANDLE DELETE ACTION ---
+        if (action === 'delete') {
+            var rows = sheet.getDataRange().getValues();
+            var idToDelete = String(body.id);
+            var rowIndexToDelete = -1;
+
+            // Find row by ID (Assuming ID is in column 0 - first column, which matches 'id' in headers)
+            // We skip header, so start at 1
+            for (var i = 1; i < rows.length; i++) {
+                if (String(rows[i][0]) === idToDelete) {
+                    rowIndexToDelete = i + 1; // 1-based index
+                    break;
+                }
+            }
+
+            if (rowIndexToDelete > -1) {
+                sheet.deleteRow(rowIndexToDelete);
+                return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Deleted' }))
+                    .setMimeType(ContentService.MimeType.JSON);
+            } else {
+                return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ID not found' }))
+                    .setMimeType(ContentService.MimeType.JSON);
+            }
+        }
+
+        // --- HANDLE SAVE ACTION (Default) ---
+        const headers = sheet.getDataRange().getValues()[0];
+
+        // Map body to headers
+        const newRow = headers.map(header => {
+            const value = body[header];
+            if (header === 'items') return JSON.stringify(value);
+            return value === undefined || value === null ? '' : value;
+        });
+
+        sheet.appendRow(newRow);
+
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success' }))
+            .setMimeType(ContentService.MimeType.JSON);
+
+    } catch (error) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.toString() }))
+            .setMimeType(ContentService.MimeType.JSON);
+    } finally {
+        lock.releaseLock();
+    }
+}

@@ -13,13 +13,15 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../redux/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { deleteBillFromGoogleSheets } from '../../../redux/billSlice';
+import { AppDispatch, RootState } from '../../../redux/store';
 import { printBill } from '../../../utils/printBill';
 
 export default function BillDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
 
   // Normalize ID (Ensure it's a string to prevent crashes)
   const billId = Array.isArray(id) ? id[0] : id;
@@ -30,6 +32,7 @@ export default function BillDetailsScreen() {
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!bill) {
     return (
@@ -48,11 +51,41 @@ export default function BillDetailsScreen() {
     );
   }
 
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Bill",
+      "Are you sure you want to delete this bill permanently?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await dispatch(deleteBillFromGoogleSheets(billId)).unwrap();
+              router.back(); // Go back to history list
+            } catch (error: any) {
+              Alert.alert("Delete Failed", error.message);
+              setIsDeleting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const printBillFun = async () => {
     if (isPrinting) return;
     setIsPrinting(true);
     try {
-      await printBill(bill);
+      const formattedBill = {
+        ...bill,
+        date: formatDate(bill.date)
+      };
+      // 2. Pass this formatted version to the printer 
+      await printBill(formattedBill);
+
     } catch (error) {
       Alert.alert('Error', 'Failed to generate PDF');
       console.error(error);
@@ -65,7 +98,13 @@ export default function BillDetailsScreen() {
     if (isSharing) return;
     setIsSharing(true);
     try {
-      await shareBill(bill);
+
+      const formattedBill = {
+        ...bill,
+        date: formatDate(bill.date)
+      };
+
+      await shareBill(formattedBill);
     } catch (error) {
       Alert.alert('Error', 'Failed to share PDF');
       console.error(error);
@@ -73,6 +112,24 @@ export default function BillDetailsScreen() {
       setIsSharing(false);
     }
   };
+
+
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) return dateString;
+
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -84,7 +141,10 @@ export default function BillDetailsScreen() {
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Bill Details</Text>
-          <View style={{ width: 24 }} />
+
+          <TouchableOpacity onPress={handleDelete} disabled={isDeleting}>
+            {isDeleting ? <ActivityIndicator size="small" color="#EF4444" /> : <Ionicons name="trash-outline" size={24} color="#EF4444" />}
+          </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
@@ -92,7 +152,7 @@ export default function BillDetailsScreen() {
           {/* Invoice Meta */}
           <View style={styles.card}>
             <Text style={styles.invoiceId}>Bill ID: {bill.id}</Text>
-            <Text style={styles.invoiceDate}>Date: {new Date(bill.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+            <Text style={styles.invoiceDate}>Date: {formatDate(bill.date)}</Text>
             <View style={styles.divider} />
 
             <Text style={styles.sectionTitle}>Customer Information</Text>

@@ -16,10 +16,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProductsFromGoogleSheets, Product, saveProductToGoogleSheets } from '../../../redux/billSlice';
+import { deleteProductFromGoogleSheets, fetchProductsFromGoogleSheets, Product, saveProductToGoogleSheets } from '../../../redux/billSlice';
 import { AppDispatch, RootState } from '../../../redux/store';
-
-
 
 export default function AddProductScreen() {
 
@@ -29,7 +27,6 @@ export default function AddProductScreen() {
 
   const { products, status } = useSelector((state: RootState) => state.billing)
   const isLoadingList = status === "loading";
-
 
   const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation();
@@ -53,6 +50,8 @@ export default function AddProductScreen() {
       await dispatch(saveProductToGoogleSheets(newProduct)).unwrap();
 
       ToastAndroid.show('Product added', ToastAndroid.SHORT);
+      setName('');
+      setPrice('');
     } catch (error: any) {
       Alert.alert('Error', 'Failed to save product: ' + error.message);
     } finally {
@@ -60,31 +59,56 @@ export default function AddProductScreen() {
     }
   };
 
-
-
   useEffect(() => {
     dispatch(fetchProductsFromGoogleSheets());
   }, [dispatch]);
 
+  const handleDelete = (id: string, name: string) => {
+    Alert.alert(
+      "Delete Product",
+      `Are you sure you want to delete "${name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dispatch(deleteProductFromGoogleSheets(id)).unwrap();
+              ToastAndroid.show('Product deleted', ToastAndroid.SHORT);
+            } catch (error: any) {
+              Alert.alert("Delete Failed", error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.listItem}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="cube-outline" size={20} color="#3B82F6" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="cube-outline" size={20} color="#3B82F6" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.itemName}>{item.name}</Text>
+        </View>
+        <Text style={styles.itemPrice}>₹{item.price}</Text>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.itemName}>{item.name}</Text>
-      </View>
-      <Text style={styles.itemPrice}>₹{item.price}</Text>
+
+      <TouchableOpacity
+        onPress={() => handleDelete(item.id, item.name)}
+        style={{ padding: 8, marginLeft: 8 }}
+      >
+        <Ionicons name="trash-outline" size={20} color="#EF4444" />
+      </TouchableOpacity>
     </View>
   );
-
-
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
-
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
@@ -146,7 +170,6 @@ export default function AddProductScreen() {
                 onPress={handleSave}
                 disabled={isSaving}
               >
-
                 {isSaving ? (
                   <ActivityIndicator color="#FFF" style={{ marginRight: 8 }} />
                 ) : (
@@ -155,8 +178,6 @@ export default function AddProductScreen() {
                 <Text style={styles.saveButtonText}>
                   {isSaving ? "Saving..." : "Add Product"}
                 </Text>
-
-
               </TouchableOpacity>
             </View>
 
@@ -168,9 +189,6 @@ export default function AddProductScreen() {
           <Text style={styles.emptyText}>No products found. Add one above!</Text>
         }
       />
-
-
-
     </SafeAreaView>
   );
 }
@@ -180,8 +198,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff'
   },
-
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -242,12 +258,6 @@ const styles = StyleSheet.create({
   },
   priceInput: {
     paddingLeft: 30
-  },
-  footer: {
-    padding: 16,
-    position: 'absolute',
-    bottom: 0, width: '100%',
-    backgroundColor: '#FFF'
   },
   saveButton: {
     backgroundColor: '#3B82F6',

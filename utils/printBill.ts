@@ -339,7 +339,7 @@ export const printBill = async (bill: Bill) => {
                   </div>
                   <div class="info-row">
                     <span class="info-label">Date:</span>
-                    <span class="info-val">${new Date(bill.date).toLocaleDateString()}</span>
+                    <span class="info-val">${bill.date}</span>
                   </div>
                   <div class="info-row" style="margin-top: 10px;">
                     <span class="info-label">Vehicle Name:</span>

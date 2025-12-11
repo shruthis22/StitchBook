@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 
 
-const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxK6qlOEAWuXqMG67sIvbH-sX7ZvwSoTAtTQsbu5LWPXX--C4tAQpCXIWOGmLYCQxTj/exec";
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxRVHgm4F4gXPBStRMKuDaHvUGTtnd-GeIMfNjHrtzW2AsGZ1p9sViVDWRC9b3fCuAh/exec";
 
 
 // --- Interfaces ---
@@ -76,7 +76,14 @@ export const fetchProductsFromGoogleSheets = createAsyncThunk(
 
       if (data.status === 'error') throw new Error(data.message);
 
-      return data as Product[];
+      // Sanitize Data: Ensure all fields are the correct primitive type
+      const sanitizedProducts = (data as any[]).map(p => ({
+        id: String(p.id),
+        name: String(p.name),
+        price: String(p.price)
+      }));
+
+      return sanitizedProducts as Product[];
     }
     catch (error: any) {
       return rejectWithValue(error.message);
@@ -156,7 +163,24 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
       const response = await fetch(`${GOOGLE_SHEET_API_URL}?type=bills`);
       const data = await response.json();
       if (data.status === 'error') throw new Error(data.message);
-      return data as Bill[];
+
+      // Sanitize Data
+      const sanitizedBills = (data as any[]).map(b => ({
+        ...b,
+        id: String(b.id),
+        customerName: String(b.customerName),
+        vehicleNumber: String(b.vehicleNumber || ''),
+        amount: Number(b.amount) || 0,
+        subtotal: Number(b.subtotal) || 0,
+        tax: Number(b.tax) || 0,
+        discount: Number(b.discount) || 0,
+        grandTotal: Number(b.grandTotal) || 0,
+        currentKm: Number(b.currentKm) || 0,
+        nextServiceKm: Number(b.nextServiceKm) || 0,
+        advancePayment: b.advancePayment ? Number(b.advancePayment) : 0,
+      }));
+
+      return sanitizedBills as Bill[];
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -195,10 +219,43 @@ export const saveBillToGoogleSheets = createAsyncThunk(
 
 
 
+// Delete Product (POST { action: 'delete', type: 'products', id: ... })
+export const deleteProductFromGoogleSheets = createAsyncThunk(
+  'billing/deleteProduct',
+  async (productId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: 'delete', type: 'products', id: productId }),
+      });
+      const result = await response.json();
+      if (result.status === 'error') throw new Error(result.message);
+      return productId; // Return ID to remove from state
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
-
-
-
+// Delete Bill (POST { action: 'delete', type: 'bills', id: ... })
+export const deleteBillFromGoogleSheets = createAsyncThunk(
+  'billing/deleteBill',
+  async (billId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: 'delete', type: 'bills', id: billId }),
+      });
+      const result = await response.json();
+      if (result.status === 'error') throw new Error(result.message);
+      return billId;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 // The Slice
 const billingSlice = createSlice({
@@ -218,10 +275,16 @@ const billingSlice = createSlice({
       .addCase(saveProductToGoogleSheets.fulfilled, (state, action) => {
         state.products.push(action.payload);
       })
+      .addCase(deleteProductFromGoogleSheets.fulfilled, (state, action) => {
+        state.products = state.products.filter(p => p.id !== action.payload);
+      })
 
       // Bills
       .addCase(fetchBillsFromGoogleSheets.fulfilled, (state, action) => {
         state.bills = action.payload;
+      })
+      .addCase(deleteBillFromGoogleSheets.fulfilled, (state, action) => {
+        state.bills = state.bills.filter(b => b.id !== action.payload);
       });
   },
 });

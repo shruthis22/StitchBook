@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
-import { useDispatch } from 'react-redux';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useDispatch } from 'react-redux';
 import { loginSuccess } from '../redux/authSlice'; // Adjust path as needed
 
 export default function LoginScreen() {
@@ -11,7 +11,7 @@ export default function LoginScreen() {
   const router = useRouter();
 
   // REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT URL
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhPjGiav5ghkYWM_5XG9NT39e1l3Zd5s0CjoNWg_54717tMd0DfY9Mbwd6PLwF4ZUS/exec"; 
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhPjGiav5ghkYWM_5XG9NT39e1l3Zd5s0CjoNWg_54717tMd0DfY9Mbwd6PLwF4ZUS/exec";
 
   const handleLogin = async () => {
     if (pin.length < 4) {
@@ -33,10 +33,10 @@ export default function LoginScreen() {
 
       if (result.status === 'success') {
         // 1. Save user to Redux (Redux Persist handles storage)
-        dispatch(loginSuccess({ name: result.user }));
-        
+        dispatch(loginSuccess({ name: String(result.user) }));
+
         // 2. Navigate to your main app
-        router.replace('/(drawer)/home'); 
+        router.replace('/(drawer)/home');
       } else {
         Alert.alert("Access Denied", "Incorrect PIN");
         setPin(''); // Clear the PIN
@@ -51,13 +51,13 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      
-      <Image 
+
+      <Image
         source={require("../assets/logo-isaii.png")}
         style={styles.logo}
       />
       <Text style={styles.header}>Enter Access PIN</Text>
-      
+
       <TextInput
         style={styles.pinInput}
         value={pin}
@@ -69,9 +69,9 @@ export default function LoginScreen() {
         placeholderTextColor="#ccc"
       />
 
-      <TouchableOpacity 
-        style={styles.loginButton} 
-        onPress={handleLogin} 
+      <TouchableOpacity
+        style={styles.loginButton}
+        onPress={handleLogin}
         disabled={loading}
       >
         {loading ? (
@@ -92,10 +92,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
   },
-  logo:{
-    height:100,
-    width:100,
-    marginBottom:20,
+  logo: {
+    height: 100,
+    width: 100,
+    marginBottom: 20,
   },
   header: {
     fontSize: 24,

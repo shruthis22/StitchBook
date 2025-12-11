@@ -13,6 +13,8 @@ const numberToWords = (num: number): string => {
 
 export const shareBill = async (bill: Bill) => {
 
+
+
   const products = bill.items.filter(item => item.type === 'product');
   const labour = bill.items.filter(item => item.type === 'labour');
 
@@ -20,8 +22,14 @@ export const shareBill = async (bill: Bill) => {
   const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
   await logoAsset.downloadAsync();
 
+  // Load God Image
+  const godAsset = Asset.fromModule(require('../assets/god-image.png'));
+  await godAsset.downloadAsync();
+
   let logoBase64 = "";
+
   if (logoAsset.localUri) {
+
     try {
       // Robust method: Copy to cache first to avoid access issues in production
       const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
@@ -34,10 +42,30 @@ export const shareBill = async (bill: Bill) => {
         encoding: FileSystem.EncodingType.Base64,
       });
       logoBase64 = `data:image/png;base64,${base64}`;
-    } catch (e: any) {
+    }
+    catch (e: any) {
       console.error("Failed to load logo", e);
       Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
       logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+    }
+  }
+
+  let godBase64 = "";
+  if (godAsset.localUri) {
+    try {
+      const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
+      await FileSystem.copyAsync({
+        from: godAsset.localUri,
+        to: targetPath
+      });
+
+      const base64 = await FileSystem.readAsStringAsync(targetPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      godBase64 = `data:image/png;base64,${base64}`;
+    } catch (e: any) {
+      console.error("Failed to load god image", e);
+      godBase64 = "";
     }
   }
 
@@ -56,11 +84,10 @@ export const shareBill = async (bill: Bill) => {
           /* Main Container */
           .container { 
             border: 2px solid #000; 
-            min-height: 98vh; /* Allow growth */
-            /* Removed fixed height and flex to allow multi-page flow */
-            display: block;
+            min-height: 98vh;
+            display: flex;
+            flex-direction: column;
             position: relative;
-            padding-bottom: 120px; /* Ensure space for footer */
           }
 
           /* --- Header Section --- */
@@ -68,7 +95,7 @@ export const shareBill = async (bill: Bill) => {
             display: flex;
             border-bottom: 2px solid #000;
             height: 180px; 
-            /* flex-shrink: 0; removed as not in flex container anymore */
+            flex-shrink: 0;
           }
 
           /* Left Header */
@@ -112,11 +139,31 @@ export const shareBill = async (bill: Bill) => {
             width: 50%;
             padding: 15px;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            flex-direction: row; /* Side-by-side */
+            justify-content: space-between;
+            align-items: center;
             font-size: 13px;
             line-height: 1.6;
           }
+          
+          .bill-info-container {
+             flex: 1;
+             display: flex;
+             flex-direction: column;
+             justify-content: center;
+          }
+
+          .god-img-container {
+            width: 170px; 
+            text-align: center;
+            margin-left: 10px;
+          }
+          .god-img {
+             width: 160px; 
+             height: 160px;
+             object-fit: contain;
+          }
+
           .info-row {
             display: flex;
           }
@@ -137,85 +184,84 @@ export const shareBill = async (bill: Bill) => {
             font-weight: bold;
             background-color: #f9f9f9;
             font-size: 13px;
-            /* flex-shrink: 0; removed */
+            flex-shrink: 0;
           }
 
           /* --- Table Section --- */
           .table-container { 
-            /* flex: 1; removed */
+            flex: 1;
             width: 100%;
-            display: block; 
+            display: block;
+            /* Vertical Lines Gradient - Consistent 2px width */
+            background: linear-gradient(to right, 
+              transparent 48px, #000 48px, #000 50px, transparent 50px,
+              transparent calc(100% - 242px), #000 calc(100% - 242px), #000 calc(100% - 240px), transparent calc(100% - 240px),
+              transparent calc(100% - 182px), #000 calc(100% - 182px), #000 calc(100% - 180px), transparent calc(100% - 180px),
+              transparent calc(100% - 102px), #000 calc(100% - 102px), #000 calc(100% - 100px), transparent calc(100% - 100px)
+            );
           }
           
           table { 
             width: 100%; 
-            border-collapse: separate; 
-            border-spacing: 0; /* CRITICAL: Removes gaps between cells */
+            table-layout: fixed; 
+            border-collapse: collapse; /* Ensure borders touch */
+            border-spacing: 0; 
           }
           
           th { 
             border-bottom: 2px solid #000; 
-            border-right: 1px solid #000;
+            border-right: 2px solid #000;
             padding: 8px; 
             text-align: center;
             font-weight: bold;
             background-color: #eee;
             height: 30px; 
           }
-          
-          /* Ensure header border matches column border logic */
           th:last-child { border-right: none; }
 
-          thead { display: table-header-group; } /* Repeats header on new pages */
+          thead { display: table-header-group; }
 
           tbody tr {
-            height: auto; /* Allow natural height */
-            page-break-inside: avoid; /* Prevent row splitting */
-          }
-
-          /* Filler row expands to fill space */
-          tr.filler-row {
-            height: 50px; /* Give it some minimum height if needed, or remove if not using flex grow */
-            display: none; /* Hide filler row in multi-page layout as we just want content to flow */
+            height: auto; 
+            page-break-inside: avoid; 
           }
           
           td { 
-            border-bottom: 1px solid #ccc; /* Add light row separators for readablity helps in multi-page */
-            border-right: 1px solid #000; 
+            border-bottom: none;
+            border-right: none;
             padding: 5px 8px;
             vertical-align: top;
+            background: transparent;
           }
-          /* We need a bottom border for the last row of the table? Or strictly stick to the outer border? 
-             With multi-page, table borders are tricky. keeping verticals. */
 
-          /* Remove right border from last column */
-          .col-amt, th.col-amt { border-right: none; }
-
-          .col-sno { width: 50px; text-align: center; }
+          /* Force specific border on S.No column to be SURE it is visible */
+          .col-sno { 
+             width: 50px; 
+             text-align: center; 
+             /* Removed duplicate border to rely on gradient */
+          }
           .col-part { text-align: left; }
           .col-qty { width: 60px; text-align: center; }
           .col-rate { width: 80px; text-align: right; }
           .col-amt { width: 100px; text-align: right; }
 
-          .labour-header td {
-             font-weight: bold;
-             text-decoration: underline;
-             padding-top: 10px;
-             height: auto; 
-             border-right: 1px solid #000; 
-             border-bottom: none;
-          }
-          .labour-header td:last-child { border-right: none; }
+           .labour-header td {
+              font-weight: bold;
+              text-decoration: underline;
+              padding-top: 10px;
+              height: auto; 
+              border-right: none;
+              border-bottom: none;
+           }
 
           /* --- Footer Section --- */
           .footer {
             height: 120px;
             border-top: 2px solid #000;
             display: flex;
-            page-break-inside: avoid; /* Keep footer together */
-            position: absolute;
-            bottom: 0;
-            left: 0;
+            page-break-inside: avoid;
+            flex-shrink: 0;
+            /* Position relative in flex flow */
             width: 100%;
           }
 
@@ -278,30 +324,37 @@ export const shareBill = async (bill: Bill) => {
             </div>
             
             <div class="header-right">
-               <div class="info-row">
-                 <span class="info-label">Bill To:</span>
-                 <span class="info-val">${bill.customerName}</span>
+               <div class="bill-info-container">
+                  <div class="info-row">
+                    <span class="info-label">Bill To:</span>
+                    <span class="info-val">${bill.customerName}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Phone:</span>
+                    <span class="info-val">${bill.customerPhone || '-'}</span>
+                  </div>
+                  <div class="info-row" style="margin-top: 10px;">
+                    <span class="info-label">Bill No:</span>
+                    <span class="info-val">${bill.id}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Date:</span>
+                    <span class="info-val">${bill.date}</span>
+                  </div>
+                  <div class="info-row" style="margin-top: 10px;">
+                    <span class="info-label">Vehicle Name:</span>
+                    <span class="info-val">${bill.vehicleName || '-'}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Vehicle No:</span>
+                    <span class="info-val">${bill.vehicleNumber || '-'}</span>
+                  </div>
                </div>
-               <div class="info-row">
-                 <span class="info-label">Phone:</span>
-                 <span class="info-val">${bill.customerPhone || '-'}</span>
+               ${godBase64 ? `
+               <div class="god-img-container">
+                  <img src="${godBase64}" class="god-img" />
                </div>
-               <div class="info-row" style="margin-top: 10px;">
-                 <span class="info-label">Bill No:</span>
-                 <span class="info-val">${bill.id}</span>
-               </div>
-               <div class="info-row">
-                 <span class="info-label">Date:</span>
-                 <span class="info-val">${new Date(bill.date).toLocaleDateString()}</span>
-               </div>
-               <div class="info-row" style="margin-top: 10px;">
-                 <span class="info-label">Vehicle Name:</span>
-                 <span class="info-val">${bill.vehicleName || '-'}</span>
-               </div>
-               <div class="info-row">
-                 <span class="info-label">Vehicle No:</span>
-                 <span class="info-val">${bill.vehicleNumber || '-'}</span>
-               </div>
+               ` : ''}
             </div>
           </div>
 
@@ -354,13 +407,7 @@ export const shareBill = async (bill: Bill) => {
                   </tr>
                 `).join('')}
                 
-                <tr class="filler-row">
-                  <td class="col-sno">&nbsp;</td>
-                  <td class="col-part">&nbsp;</td>
-                  <td class="col-qty">&nbsp;</td>
-                  <td class="col-rate">&nbsp;</td>
-                  <td class="col-amt">&nbsp;</td>
-                </tr>
+
 
               </tbody>
             </table>
@@ -396,8 +443,6 @@ export const shareBill = async (bill: Bill) => {
 
   const { uri } = await Print.printToFileAsync({ html });
   console.log('File has been saved to:', uri);
-
-
 
   await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };
