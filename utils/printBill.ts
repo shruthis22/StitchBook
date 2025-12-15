@@ -102,9 +102,10 @@ body {
 .header-left {
     width: 55%;
     border-right: 2px solid #000;
-    padding: 12px;
+    padding: 4px;
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    align-items: center;
 }
 
 .logo {
@@ -112,6 +113,7 @@ body {
     height: 70px;
     border-radius: 50%;
     border: 1px solid #aaa;
+    object-fit: cover;
 }
 
 .company-name {
@@ -122,9 +124,10 @@ body {
 
 .header-right {
     width: 45%;
-    padding: 12px;
+    padding: 4px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .info-row {
@@ -140,6 +143,9 @@ body {
 .god-img {
     width: 70px;
     height: 70px;
+    border-radius: 50%;
+    border: 1px solid #aaa;
+    object-fit: cover;
 }
 
 /* ================= KM STRIP ================= */
@@ -242,7 +248,7 @@ body {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 10px;
+    padding-bottom: 40px;
     font-style: italic;
 }
 </style>
@@ -337,7 +343,7 @@ body {
             </div>
 
             <div class="signature">
-                <div style="border-top:1px solid #000; padding:5px 25px;">
+                <div style="padding-top:30px;">
                     Authorized Signature
                 </div>
             </div>

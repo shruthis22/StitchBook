@@ -6,7 +6,7 @@ import { Alert } from 'react-native';
 import { Bill } from '../redux/billSlice';
 
 const numberToWords = (num: number): string => {
-  return `${num} (Only)`;
+    return `${num} (Only)`;
 };
 
 
@@ -15,63 +15,63 @@ export const shareBill = async (bill: Bill) => {
 
 
 
-  const products = bill.items.filter(item => item.type === 'product');
-  const labour = bill.items.filter(item => item.type === 'labour');
+    const products = bill.items.filter(item => item.type === 'product');
+    const labour = bill.items.filter(item => item.type === 'labour');
 
 
-  const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
-  await logoAsset.downloadAsync();
+    const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
+    await logoAsset.downloadAsync();
 
-  // Load God Image
-  const godAsset = Asset.fromModule(require('../assets/god-image.png'));
-  await godAsset.downloadAsync();
+    // Load God Image
+    const godAsset = Asset.fromModule(require('../assets/god-image.png'));
+    await godAsset.downloadAsync();
 
-  let logoBase64 = "";
+    let logoBase64 = "";
 
-  if (logoAsset.localUri) {
+    if (logoAsset.localUri) {
 
-    try {
-      // Robust method: Copy to cache first to avoid access issues in production
-      const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
-      await FileSystem.copyAsync({
-        from: logoAsset.localUri,
-        to: targetPath
-      });
+        try {
+            // Robust method: Copy to cache first to avoid access issues in production
+            const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
+            await FileSystem.copyAsync({
+                from: logoAsset.localUri,
+                to: targetPath
+            });
 
-      const base64 = await FileSystem.readAsStringAsync(targetPath, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      logoBase64 = `data:image/png;base64,${base64}`;
+            const base64 = await FileSystem.readAsStringAsync(targetPath, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            logoBase64 = `data:image/png;base64,${base64}`;
+        }
+        catch (e: any) {
+            console.error("Failed to load logo", e);
+            Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
+            logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+        }
     }
-    catch (e: any) {
-      console.error("Failed to load logo", e);
-      Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
-      logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+
+    let godBase64 = "";
+    if (godAsset.localUri) {
+        try {
+            const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
+            await FileSystem.copyAsync({
+                from: godAsset.localUri,
+                to: targetPath
+            });
+
+            const base64 = await FileSystem.readAsStringAsync(targetPath, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            godBase64 = `data:image/png;base64,${base64}`;
+        } catch (e: any) {
+            console.error("Failed to load god image", e);
+            godBase64 = "";
+        }
     }
-  }
-
-  let godBase64 = "";
-  if (godAsset.localUri) {
-    try {
-      const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
-      await FileSystem.copyAsync({
-        from: godAsset.localUri,
-        to: targetPath
-      });
-
-      const base64 = await FileSystem.readAsStringAsync(targetPath, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      godBase64 = `data:image/png;base64,${base64}`;
-    } catch (e: any) {
-      console.error("Failed to load god image", e);
-      godBase64 = "";
-    }
-  }
 
 
 
-  const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -103,9 +103,10 @@ body {
 .header-left {
     width: 55%;
     border-right: 2px solid #000;
-    padding: 12px;
+    padding: 4px;
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    align-items: center;
 }
 
 .logo {
@@ -113,6 +114,7 @@ body {
     height: 70px;
     border-radius: 50%;
     border: 1px solid #aaa;
+    object-fit: cover;
 }
 
 .company-name {
@@ -123,9 +125,10 @@ body {
 
 .header-right {
     width: 45%;
-    padding: 12px;
+    padding: 4px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
 }
 
 .info-row {
@@ -141,6 +144,9 @@ body {
 .god-img {
     width: 70px;
     height: 70px;
+    border-radius: 50%;
+    border: 1px solid #aaa;
+    object-fit: cover;
 }
 
 /* ================= KM STRIP ================= */
@@ -243,7 +249,7 @@ body {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 10px;
+    padding-bottom: 40px;
     font-style: italic;
 }
 </style>
@@ -338,7 +344,7 @@ body {
             </div>
 
             <div class="signature">
-                <div style="border-top:1px solid #000; padding:5px 25px;">
+                <div style="padding-top:30px;">
                     Authorized Signature
                 </div>
             </div>
@@ -352,8 +358,8 @@ body {
 `;
 
 
-  const { uri } = await Print.printToFileAsync({ html });
-  console.log('File has been saved to:', uri);
+    const { uri } = await Print.printToFileAsync({ html });
+    console.log('File has been saved to:', uri);
 
-  await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 };
