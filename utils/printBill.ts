@@ -6,7 +6,7 @@ import { Bill } from '../redux/billSlice';
 
 
 const numberToWords = (num: number): string => {
-  return `${num} (Only)`;
+    return `${num} (Only)`;
 };
 
 
@@ -15,62 +15,62 @@ export const printBill = async (bill: Bill) => {
 
 
 
-  const products = bill.items.filter(item => item.type === 'product');
-  const labour = bill.items.filter(item => item.type === 'labour');
+    const products = bill.items.filter(item => item.type === 'product');
+    const labour = bill.items.filter(item => item.type === 'labour');
 
 
-  const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
-  await logoAsset.downloadAsync();
+    const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
+    await logoAsset.downloadAsync();
 
-  // Load God Image
-  const godAsset = Asset.fromModule(require('../assets/god-image.png'));
-  await godAsset.downloadAsync();
+    // Load God Image
+    const godAsset = Asset.fromModule(require('../assets/god-image.png'));
+    await godAsset.downloadAsync();
 
-  let logoBase64 = "";
+    let logoBase64 = "";
 
-  if (logoAsset.localUri) {
+    if (logoAsset.localUri) {
 
-    try {
-      // Robust method: Copy to cache first to avoid access issues in production
-      const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
-      await FileSystem.copyAsync({
-        from: logoAsset.localUri,
-        to: targetPath
-      });
+        try {
+            // Robust method: Copy to cache first to avoid access issues in production
+            const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
+            await FileSystem.copyAsync({
+                from: logoAsset.localUri,
+                to: targetPath
+            });
 
-      const base64 = await FileSystem.readAsStringAsync(targetPath, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      logoBase64 = `data:image/png;base64,${base64}`;
+            const base64 = await FileSystem.readAsStringAsync(targetPath, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            logoBase64 = `data:image/png;base64,${base64}`;
+        }
+        catch (e: any) {
+            console.error("Failed to load logo", e);
+            Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
+            logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+        }
     }
-    catch (e: any) {
-      console.error("Failed to load logo", e);
-      Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
-      logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+
+    let godBase64 = "";
+    if (godAsset.localUri) {
+        try {
+            const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
+            await FileSystem.copyAsync({
+                from: godAsset.localUri,
+                to: targetPath
+            });
+
+            const base64 = await FileSystem.readAsStringAsync(targetPath, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            godBase64 = `data:image/png;base64,${base64}`;
+        } catch (e: any) {
+            console.error("Failed to load god image", e);
+            godBase64 = "";
+        }
     }
-  }
-
-  let godBase64 = "";
-  if (godAsset.localUri) {
-    try {
-      const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
-      await FileSystem.copyAsync({
-        from: godAsset.localUri,
-        to: targetPath
-      });
-
-      const base64 = await FileSystem.readAsStringAsync(targetPath, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      godBase64 = `data:image/png;base64,${base64}`;
-    } catch (e: any) {
-      console.error("Failed to load god image", e);
-      godBase64 = "";
-    }
-  }
 
 
-  const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -186,7 +186,7 @@ body {
 
 /* ITEM ROWS */
 .row {
-    border-bottom: 1px solid #ddd;
+    border-bottom: none;
 }
 
 /* EMPTY FILLER (THIS IS THE KEY PART) */
@@ -350,11 +350,11 @@ body {
 </html>
 `;
 
-  const { uri } = await Print.printToFileAsync({ html });
-  console.log('File has been saved to:', uri);
+    const { uri } = await Print.printToFileAsync({ html });
+    console.log('File has been saved to:', uri);
 
-  await Print.printAsync({
-    html: html,
-    orientation: Print.Orientation.portrait,
-  });
+    await Print.printAsync({
+        html: html,
+        orientation: Print.Orientation.portrait,
+    });
 };
