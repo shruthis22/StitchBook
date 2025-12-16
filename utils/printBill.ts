@@ -127,15 +127,18 @@ export const printBill = async (bill: Bill) => {
             <div class="cell right">Amount</div>
         </div>
 
-        ${pageItems.map((item, i) => `
+        ${pageItems.map((item, i) => {
+            const isFirstLabour = item.type === 'labour' && (i === 0 || pageItems[i - 1].type !== 'labour');
+            return `
         <div class="grid row ${item.type === 'labour' ? 'labour-row' : ''}">
             <div class="cell center">${startIdx + i + 1}</div>
-            <div class="cell">${item.type === 'labour' ? '<strong>Labour Charges:</strong> ' : ''}${item.name}</div>
+            <div class="cell">${isFirstLabour ? '<strong>Labour Charges:</strong><br>' : ''}${item.name}</div>
             <div class="cell center">${item.qty}</div>
             <div class="cell right">${item.rate}</div>
             <div class="cell right">${item.amount}</div>
         </div>
-        `).join('')}
+        `;
+        }).join('')}
 
         ${!isLastPage ? `
         <div class="filler">
