@@ -77,12 +77,14 @@ export const printBill = async (bill: Bill) => {
     <div class="header">
         <div class="header-left">
             <img src="${logoBase64}" class="logo">
-            <div>
+            <div style="margin-left: 20px; margin-right: 20px;">
                 <div class="company-name">JK SERVICE & DECORS</div>
                 <div>Indhra Nagar, Konavaikkal</div>
                 <div>Bhavani, Tamil Nadu 638316</div>
                 <div><strong>Phone: 96981 92330</strong></div>
             </div>
+    
+            <img src="${godBase64}" class="god-img">
         </div>
 
         <div class="header-right">
@@ -94,7 +96,7 @@ export const printBill = async (bill: Bill) => {
                 <div class="info-row"><span class="info-label">Vehicle:</span>${bill.vehicleName}</div>
                 <div class="info-row"><span class="info-label">Vehicle No:</span>${bill.vehicleNumber}</div>
             </div>
-            <img src="${godBase64}" class="god-img">
+            
         </div>
     </div>
 
@@ -126,9 +128,9 @@ export const printBill = async (bill: Bill) => {
         </div>
 
         ${pageItems.map((item, i) => `
-        <div class="grid row">
+        <div class="grid row ${item.type === 'labour' ? 'labour-row' : ''}">
             <div class="cell center">${startIdx + i + 1}</div>
-            <div class="cell">${item.name}</div>
+            <div class="cell">${item.type === 'labour' ? '<strong>Labour Charges:</strong> ' : ''}${item.name}</div>
             <div class="cell center">${item.qty}</div>
             <div class="cell right">${item.rate}</div>
             <div class="cell right">${item.amount}</div>
@@ -216,17 +218,17 @@ body {
 }
 
 .header-left {
-    width: 55%;
+    width: 70%;
     border-right: 2px solid #000;
-    padding: 4px;
+    padding: 10px;
     display: flex;
-    gap: 8px;
+    gap: 20px;
     align-items: center;
 }
 
 .logo {
-    width: 70px;
-    height: 70px;
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
@@ -235,14 +237,14 @@ body {
 .company-name {
     color: #2fd715;
     font-weight: 900;
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .header-right {
-    width: 45%;
-    padding: 4px;
+    width: 30%;
+    padding: 6px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
 }
 
@@ -257,8 +259,9 @@ body {
 }
 
 .god-img {
-    width: 70px;
-    height: 70px;
+    filter: grayscale(100%);
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
@@ -309,6 +312,11 @@ body {
 /* ITEM ROWS */
 .row {
     border-bottom: none;
+}
+
+.labour-row {
+    font-size: 14px;
+    font-weight: bold;
 }
 
 /* EMPTY FILLER (THIS IS THE KEY PART) */
