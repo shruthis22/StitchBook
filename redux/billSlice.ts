@@ -62,123 +62,126 @@ const initialState: BillingState = {
 
 
 
+// --- Helper: Safe Fetch with Timeout ---
+const safeFetch = async (url: string, options: RequestInit = {}, timeout = 15000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+    }
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON response from server");
+    }
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error("Request timed out");
+    }
+    throw error;
+  } finally {
+    clearTimeout(id);
+  }
+};
+
+// --- Helper: Deep Sanitization ---
+const sanitizeBillItem = (item: any): BillItem => ({
+  id: String(item?.id || Math.random().toString(36).substr(2, 9)),
+  name: String(item?.name || 'Unknown Item'),
+  qty: Number(item?.qty) || 0,
+  rate: Number(item?.rate) || 0,
+  amount: Number(item?.amount) || 0,
+  type: (item?.type === 'product' || item?.type === 'labour') ? item.type : 'product',
+});
+
 // Fetch Products (GET ?type=products)
 export const fetchProductsFromGoogleSheets = createAsyncThunk(
-
   'billing/fetchProducts',
-
   async (_, { rejectWithValue }) => {
-
     try {
-      const response = await fetch(`${GOOGLE_SHEET_API_URL}?type=products`);
-
-      const data = await response.json();
-
+      const data = await safeFetch(`${GOOGLE_SHEET_API_URL}?type=products`);
       if (data.status === 'error') throw new Error(data.message);
+      if (!Array.isArray(data)) throw new Error("Invalid data format: expected array");
 
-      // Sanitize Data: Ensure all fields are the correct primitive type
-      const sanitizedProducts = (data as any[]).map(p => ({
+      return data.map((p: any) => ({
         id: String(p.id),
         name: String(p.name),
         price: String(p.price)
-      }));
-
-      return sanitizedProducts as Product[];
-    }
-    catch (error: any) {
+      })) as Product[];
+    } catch (error: any) {
       return rejectWithValue(error.message);
     }
-
-
   }
 );
 
-
-
-
-
-
-
-
-
-
-
-
-// Save Product (POST { ...product, _sheetType: 'products' })
+// Save Product
 export const saveProductToGoogleSheets = createAsyncThunk(
-
   'billing/saveProduct',
-
-
   async (newProduct: Product, { rejectWithValue }) => {
-
-
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-      const response = await fetch(GOOGLE_SHEET_API_URL, {
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        // We add _sheetType so Apps Script knows where to put it
         body: JSON.stringify({ ...newProduct, _sheetType: 'products' }),
-        signal: controller.signal
       });
-
-      clearTimeout(timeoutId);
-
-      const result = await response.json();
       if (result.status === 'error') throw new Error(result.message);
       return newProduct;
-    }
-    catch (error: any) {
-      if (error.name === 'AbortError') {
-        return rejectWithValue("Request timed out");
-      }
+    } catch (error: any) {
       return rejectWithValue(error.message);
     }
-
-
   }
 );
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Fetch Bills (GET ?type=bills)
 export const fetchBillsFromGoogleSheets = createAsyncThunk(
   'billing/fetchBills',
   async (_, { rejectWithValue }) => {
     try {
-      // Default type is bills, but being explicit helps
-      const response = await fetch(`${GOOGLE_SHEET_API_URL}?type=bills`);
-      const data = await response.json();
+      const data = await safeFetch(`${GOOGLE_SHEET_API_URL}?type=bills`);
       if (data.status === 'error') throw new Error(data.message);
+      if (!Array.isArray(data)) throw new Error("Invalid data format: expected array");
 
-      // Sanitize Data
-      const sanitizedBills = (data as any[]).map(b => ({
-        ...b,
-        id: String(b.id),
-        customerName: String(b.customerName),
-        vehicleNumber: String(b.vehicleNumber || ''),
-        amount: Number(b.amount) || 0,
-        subtotal: Number(b.subtotal) || 0,
-        tax: Number(b.tax) || 0,
-        discount: Number(b.discount) || 0,
-        grandTotal: Number(b.grandTotal) || 0,
-        currentKm: Number(b.currentKm) || 0,
-        nextServiceKm: Number(b.nextServiceKm) || 0,
-        advancePayment: b.advancePayment ? Number(b.advancePayment) : 0,
-      }));
+      // Deep Sanitize Data
+      const sanitizedBills = data.map((b: any) => {
+        // Handle 'items' which might be a JSON string or already an object
+        let parsedItems: BillItem[] = [];
+        try {
+          if (typeof b.items === 'string') {
+            parsedItems = JSON.parse(b.items);
+          } else if (Array.isArray(b.items)) {
+            parsedItems = b.items;
+          }
+        } catch (e) {
+          console.warn("Failed to parse items for bill", b.id);
+          parsedItems = [];
+        }
+
+        return {
+          ...b,
+          id: String(b.id),
+          customerName: String(b.customerName || 'Unknown'),
+          vehicleNumber: String(b.vehicleNumber || ''),
+          date: String(b.date || new Date().toISOString()),
+          status: b.status || 'Pending',
+          amount: Number(b.amount) || 0,
+          subtotal: Number(b.subtotal) || 0,
+          tax: Number(b.tax) || 0,
+          discount: Number(b.discount) || 0,
+          grandTotal: Number(b.grandTotal) || 0,
+          remarks: String(b.remarks || ''),
+          currentKm: Number(b.currentKm) || 0,
+          nextServiceKm: Number(b.nextServiceKm) || 0,
+          advancePayment: b.advancePayment ? Number(b.advancePayment) : 0,
+          // CRITICAL: Ensure items is always an array of valid objects
+          items: Array.isArray(parsedItems) ? parsedItems.map(sanitizeBillItem) : [],
+        };
+      });
 
       return sanitizedBills as Bill[];
     } catch (error: any) {
@@ -187,27 +190,16 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
   }
 );
 
-
-
-
-
-
-
-
-
-
-
-// Save Bill (POST)
+// Save Bill
 export const saveBillToGoogleSheets = createAsyncThunk(
   'billing/saveBill',
   async (newBill: Bill, { rejectWithValue }) => {
     try {
-      const response = await fetch(GOOGLE_SHEET_API_URL, {
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ ...newBill, _sheetType: 'bills' }),
       });
-      const result = await response.json();
       if (result.status === 'error') throw new Error(result.message);
       return newBill;
     } catch (error: any) {
@@ -216,39 +208,34 @@ export const saveBillToGoogleSheets = createAsyncThunk(
   }
 );
 
-
-
-
-// Delete Product (POST { action: 'delete', type: 'products', id: ... })
+// Delete Product
 export const deleteProductFromGoogleSheets = createAsyncThunk(
   'billing/deleteProduct',
   async (productId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(GOOGLE_SHEET_API_URL, {
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: 'delete', type: 'products', id: productId }),
       });
-      const result = await response.json();
       if (result.status === 'error') throw new Error(result.message);
-      return productId; // Return ID to remove from state
+      return productId;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
   }
 );
 
-// Delete Bill (POST { action: 'delete', type: 'bills', id: ... })
+// Delete Bill
 export const deleteBillFromGoogleSheets = createAsyncThunk(
   'billing/deleteBill',
   async (billId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(GOOGLE_SHEET_API_URL, {
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: 'delete', type: 'bills', id: billId }),
       });
-      const result = await response.json();
       if (result.status === 'error') throw new Error(result.message);
       return billId;
     } catch (error: any) {
