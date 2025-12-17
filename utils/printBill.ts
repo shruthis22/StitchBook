@@ -208,14 +208,14 @@ export const printBill = async (bill: Bill) => {
 * { box-sizing: border-box; }
 
 body {
-    margin: 0;
+    margin: 10px;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 12px;
 }
 
 .page-container {
     border: 2px solid #000;
-    min-height: 98vh;
+    min-height: calc(95vh - 10px);
     display: flex;
     flex-direction: column;
 }
