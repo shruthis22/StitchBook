@@ -6,74 +6,74 @@ import { Bill } from '../redux/billSlice';
 
 
 const numberToWords = (num: number): string => {
-    return `${num} (Only)`;
+  return `${num} (Only)`;
 };
 
 
 
 export const printBill = async (bill: Bill) => {
 
-    const products = bill.items.filter(item => item.type === 'product');
-    const labour = bill.items.filter(item => item.type === 'labour');
+  const products = bill.items.filter(item => item.type === 'product');
+  const labour = bill.items.filter(item => item.type === 'labour');
 
-    // Combine all items for pagination
-    const allItems = [...products, ...labour];
+  // Combine all items for pagination
+  const allItems = [...products, ...labour];
 
-    // Calculate items per page (leaving room for header, footer, etc.)
-    const ITEMS_PER_PAGE = 30;
-    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
+  // Calculate items per page (leaving room for header, footer, etc.)
+  const ITEMS_PER_PAGE = 27;
+  const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
 
-    const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
-    await logoAsset.downloadAsync();
+  const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
+  await logoAsset.downloadAsync();
 
-    // Load God Image
-    const godAsset = Asset.fromModule(require('../assets/god-image.png'));
-    await godAsset.downloadAsync();
+  // Load God Image
+  const godAsset = Asset.fromModule(require('../assets/god-image.png'));
+  await godAsset.downloadAsync();
 
-    let logoBase64 = "";
+  let logoBase64 = "";
 
-    if (logoAsset.localUri) {
-        try {
-            // Robust method: Copy to cache first to avoid access issues in production
-            const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
-            await FileSystem.copyAsync({
-                from: logoAsset.localUri,
-                to: targetPath
-            });
+  if (logoAsset.localUri) {
+    try {
+      // Robust method: Copy to cache first to avoid access issues in production
+      const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
+      await FileSystem.copyAsync({
+        from: logoAsset.localUri,
+        to: targetPath
+      });
 
-            const base64 = await FileSystem.readAsStringAsync(targetPath, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
-            logoBase64 = `data:image/png;base64,${base64}`;
-        }
-        catch (e: any) {
-            console.error("Failed to load logo", e);
-            Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
-            logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
-        }
+      const base64 = await FileSystem.readAsStringAsync(targetPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      logoBase64 = `data:image/png;base64,${base64}`;
     }
-
-    let godBase64 = "";
-    if (godAsset.localUri) {
-        try {
-            const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
-            await FileSystem.copyAsync({
-                from: godAsset.localUri,
-                to: targetPath
-            });
-
-            const base64 = await FileSystem.readAsStringAsync(targetPath, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
-            godBase64 = `data:image/png;base64,${base64}`;
-        } catch (e: any) {
-            console.error("Failed to load god image", e);
-            godBase64 = "";
-        }
+    catch (e: any) {
+      console.error("Failed to load logo", e);
+      Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
+      logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
     }
+  }
 
-    // Generate header HTML (reusable for each page)
-    const generateHeader = (pageNum: number, totalPages: number) => `
+  let godBase64 = "";
+  if (godAsset.localUri) {
+    try {
+      const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
+      await FileSystem.copyAsync({
+        from: godAsset.localUri,
+        to: targetPath
+      });
+
+      const base64 = await FileSystem.readAsStringAsync(targetPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      godBase64 = `data:image/png;base64,${base64}`;
+    } catch (e: any) {
+      console.error("Failed to load god image", e);
+      godBase64 = "";
+    }
+  }
+
+  // Generate header HTML (reusable for each page)
+  const generateHeader = (pageNum: number, totalPages: number) => `
     <div class="header">
         <div class="header-left">
             <img src="${logoBase64}" class="logo">
@@ -106,15 +106,15 @@ export const printBill = async (bill: Bill) => {
         <span style="font-size: 10px; color: #666;">Page ${pageNum} of ${totalPages}</span>
     </div>`;
 
-    // Generate pages
-    const pages = [];
-    for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-        const startIdx = pageIndex * ITEMS_PER_PAGE;
-        const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, allItems.length);
-        const pageItems = allItems.slice(startIdx, endIdx);
-        const isLastPage = pageIndex === totalPages - 1;
+  // Generate pages
+  const pages = [];
+  for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+    const startIdx = pageIndex * ITEMS_PER_PAGE;
+    const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, allItems.length);
+    const pageItems = allItems.slice(startIdx, endIdx);
+    const isLastPage = pageIndex === totalPages - 1;
 
-        const pageHTML = `
+    const pageHTML = `
 <div class="page-container ${!isLastPage ? 'page-break' : ''}">
     ${generateHeader(pageIndex + 1, totalPages)}
 
@@ -128,17 +128,28 @@ export const printBill = async (bill: Bill) => {
         </div>
 
         ${pageItems.map((item, i) => {
-            const isFirstLabour = item.type === 'labour' && (i === 0 || pageItems[i - 1].type !== 'labour');
-            return `
+      const isFirstLabour = item.type === 'labour' && (i === 0 || pageItems[i - 1].type !== 'labour');
+      const isFirstProduct = item.type === 'product' && (i === 0 || pageItems[i - 1].type !== 'product');
+
+      return `
+        ${isFirstLabour ? `
+        <div class="grid row section-header-row">
+            <div class="cell center"></div>
+            <div class="cell" style="font-weight: bold; font-size: 14px;">Labour Charges:</div>
+            <div class="cell center"></div>
+            <div class="cell right"></div>
+            <div class="cell right"></div>
+        </div>
+        ` : ''}
         <div class="grid row ${item.type === 'labour' ? 'labour-row' : ''}">
             <div class="cell center">${startIdx + i + 1}</div>
-            <div class="cell">${isFirstLabour ? '<strong>Labour Charges:</strong><br>' : ''}${item.name}</div>
+            <div class="cell">${item.name}</div>
             <div class="cell center">${item.qty}</div>
             <div class="cell right">${item.rate}</div>
             <div class="cell right">${item.amount}</div>
         </div>
         `;
-        }).join('')}
+    }).join('')}
 
         ${!isLastPage ? `
         <div class="filler">
@@ -184,10 +195,10 @@ export const printBill = async (bill: Bill) => {
     ` : ''}
 </div>`;
 
-        pages.push(pageHTML);
-    }
+    pages.push(pageHTML);
+  }
 
-    const html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -319,7 +330,7 @@ body {
 
 .labour-row {
     font-size: 14px;
-    font-weight: bold;
+    font-weight: normal;
 }
 
 /* EMPTY FILLER (THIS IS THE KEY PART) */
@@ -387,11 +398,11 @@ ${pages.join('\n')}
 </html>
 `;
 
-    const { uri } = await Print.printToFileAsync({ html });
-    console.log('File has been saved to:', uri);
+  const { uri } = await Print.printToFileAsync({ html });
+  console.log('File has been saved to:', uri);
 
-    await Print.printAsync({
-        html: html,
-        orientation: Print.Orientation.portrait,
-    });
+  await Print.printAsync({
+    html: html,
+    orientation: Print.Orientation.portrait,
+  });
 };

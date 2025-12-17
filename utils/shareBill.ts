@@ -13,6 +13,7 @@ const numberToWords = (num: number): string => {
 
 export const shareBill = async (bill: Bill) => {
 
+
     const products = bill.items.filter(item => item.type === 'product');
     const labour = bill.items.filter(item => item.type === 'labour');
 
@@ -20,7 +21,7 @@ export const shareBill = async (bill: Bill) => {
     const allItems = [...products, ...labour];
 
     // Calculate items per page (leaving room for header, footer, etc.)
-    const ITEMS_PER_PAGE = 30;
+    const ITEMS_PER_PAGE = 27;
     const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
 
     const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
@@ -71,6 +72,7 @@ export const shareBill = async (bill: Bill) => {
             godBase64 = "";
         }
     }
+
     // Generate header HTML (reusable for each page)
     const generateHeader = (pageNum: number, totalPages: number) => `
     <div class="header">
@@ -128,10 +130,21 @@ export const shareBill = async (bill: Bill) => {
 
         ${pageItems.map((item, i) => {
             const isFirstLabour = item.type === 'labour' && (i === 0 || pageItems[i - 1].type !== 'labour');
+            const isFirstProduct = item.type === 'product' && (i === 0 || pageItems[i - 1].type !== 'product');
+
             return `
+        ${isFirstLabour ? `
+        <div class="grid row section-header-row">
+            <div class="cell center"></div>
+            <div class="cell" style="font-weight: bold; font-size: 14px;">Labour Charges:</div>
+            <div class="cell center"></div>
+            <div class="cell right"></div>
+            <div class="cell right"></div>
+        </div>
+        ` : ''}
         <div class="grid row ${item.type === 'labour' ? 'labour-row' : ''}">
             <div class="cell center">${startIdx + i + 1}</div>
-            <div class="cell">${isFirstLabour ? '<strong>Labour Charges:</strong><br>' : ''}${item.name}</div>
+            <div class="cell">${item.name}</div>
             <div class="cell center">${item.qty}</div>
             <div class="cell right">${item.rate}</div>
             <div class="cell right">${item.amount}</div>
@@ -190,6 +203,7 @@ export const shareBill = async (bill: Bill) => {
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 @page { margin: 15px; }
 * { box-sizing: border-box; }
@@ -317,7 +331,7 @@ body {
 
 .labour-row {
     font-size: 14px;
-    font-weight: bold;
+    font-weight: normal;
 }
 
 /* EMPTY FILLER (THIS IS THE KEY PART) */
