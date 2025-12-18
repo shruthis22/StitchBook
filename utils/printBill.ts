@@ -13,6 +13,7 @@ const numberToWords = (num: number): string => {
 
 export const printBill = async (bill: Bill) => {
 
+
   const products = bill.items.filter(item => item.type === 'product');
   const labour = bill.items.filter(item => item.type === 'labour');
 
@@ -77,7 +78,7 @@ export const printBill = async (bill: Bill) => {
     <div class="header">
         <div class="header-left">
             <img src="${logoBase64}" class="logo">
-            <div style="margin-left: 20px; margin-right: 20px;">
+            <div style="margin-left: 20px; font-size: 18px; margin-right: 20px;">
                 <div class="company-name">JK SERVICE & DECORS</div>
                 <div>Indhra Nagar, Konavaikkal</div>
                 <div>Bhavani, Tamil Nadu 638316</div>
@@ -210,7 +211,7 @@ export const printBill = async (bill: Bill) => {
 body {
     margin: 10px;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
+    font-size: 15px;
 }
 
 .page-container {
@@ -241,8 +242,8 @@ body {
 }
 
 .logo {
-    width: 110px;
-    height: 110px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
@@ -274,8 +275,8 @@ body {
 
 .god-img {
     filter: grayscale(100%);
-    width: 110px;
-    height: 110px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
@@ -386,7 +387,7 @@ body {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 40px;
+    padding-bottom: 10px;
     font-style: italic;
 }
 </style>
