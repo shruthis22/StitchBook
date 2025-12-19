@@ -21,7 +21,7 @@ export const printBill = async (bill: Bill) => {
     const allItems = [...products, ...labour];
 
     // Calculate items per page (leaving room for header, footer, etc.)
-    const ITEMS_PER_PAGE = 27;
+    const ITEMS_PER_PAGE = 23;
     const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
 
     const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
@@ -79,10 +79,11 @@ export const printBill = async (bill: Bill) => {
         <div class="header-left">
             <img src="${logoBase64}" class="logo">
             <div style="margin-left: 20px; font-size: 18px; margin-right: 20px;">
-                <div class="company-name">JK SERVICE & DECORS</div>
+                <div class="company-name">JK CAR SERVICE & DECORS</div>
                 <div>Indhra Nagar, Konavaikkal</div>
                 <div>Bhavani, Tamil Nadu 638316</div>
-                <div><strong>Phone: 96981 92330</strong></div>
+                <div><strong>Phone1: 96981 92330</strong></div>
+                <div><strong>Phone2: 99721 68980</strong></div>
             </div>
     
             <img src="${godBase64}" class="god-img">
@@ -239,6 +240,7 @@ body {
     display: flex;
     gap: 20px;
     align-items: center;
+    position: relative; /* Added for absolute positioning of children */
 }
 
 .logo {
@@ -252,7 +254,8 @@ body {
 .company-name {
     color: #2fd715;
     font-weight: 900;
-    font-size: 20px;
+    font-size: 22px;
+    white-space: nowrap;
 }
 
 .header-right {
@@ -274,12 +277,15 @@ body {
 }
 
 .god-img {
-    filter: grayscale(100%);
     width: 90px;
     height: 90px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
+    position: absolute;
+    right: 10px;
+    top: 25px;
+    z-index: -1;
 }
 
 /* ================= KM STRIP ================= */
