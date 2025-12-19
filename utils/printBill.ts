@@ -14,10 +14,15 @@ const numberToWords = (num: number): string => {
 export const printBill = async (bill: Bill) => {
 
 
-
     const products = bill.items.filter(item => item.type === 'product');
     const labour = bill.items.filter(item => item.type === 'labour');
 
+    // Combine all items for pagination
+    const allItems = [...products, ...labour];
+
+    // Calculate items per page (leaving room for header, footer, etc.)
+    const ITEMS_PER_PAGE = 27;
+    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
 
     const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
     await logoAsset.downloadAsync();
@@ -29,7 +34,6 @@ export const printBill = async (bill: Bill) => {
     let logoBase64 = "";
 
     if (logoAsset.localUri) {
-
         try {
             // Robust method: Copy to cache first to avoid access issues in production
             const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
@@ -69,6 +73,131 @@ export const printBill = async (bill: Bill) => {
         }
     }
 
+    // Generate header HTML (reusable for each page)
+    const generateHeader = (pageNum: number, totalPages: number) => `
+    <div class="header">
+        <div class="header-left">
+            <img src="${logoBase64}" class="logo">
+            <div style="margin-left: 20px; font-size: 18px; margin-right: 20px;">
+                <div class="company-name">JK SERVICE & DECORS</div>
+                <div>Indhra Nagar, Konavaikkal</div>
+                <div>Bhavani, Tamil Nadu 638316</div>
+                <div><strong>Phone: 96981 92330</strong></div>
+            </div>
+    
+            <img src="${godBase64}" class="god-img">
+        </div>
+
+        <div class="header-right">
+            <div>
+                <div class="info-row"><span class="info-label">Bill To:</span>${bill.customerName}</div>
+                <div class="info-row"><span class="info-label">Phone:</span>${bill.customerPhone}</div>
+                <div class="info-row"><span class="info-label">Bill No:</span>${bill.id}</div>
+                <div class="info-row"><span class="info-label">Date:</span>${bill.date}</div>
+                <div class="info-row"><span class="info-label">Vehicle:</span>${bill.vehicleName}</div>
+                <div class="info-row"><span class="info-label">Vehicle No:</span>${bill.vehicleNumber}</div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="km-strip">
+        <span>Current KM: ${bill.currentKm}</span>
+        <span>Next Service KM: ${bill.nextServiceKm}</span>
+        <span style="font-size: 10px; color: #666;">Page ${pageNum} of ${totalPages}</span>
+    </div>`;
+
+    // Generate pages
+    const pages = [];
+    for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+        const startIdx = pageIndex * ITEMS_PER_PAGE;
+        const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, allItems.length);
+        const pageItems = allItems.slice(startIdx, endIdx);
+        const isLastPage = pageIndex === totalPages - 1;
+
+        const pageHTML = `
+<div class="page-container ${!isLastPage ? 'page-break' : ''}">
+    ${generateHeader(pageIndex + 1, totalPages)}
+
+    <div class="items-area">
+        <div class="grid header-row">
+            <div class="cell center">S.No</div>
+            <div class="cell">Particulars</div>
+            <div class="cell center">Qty</div>
+            <div class="cell right">Rate</div>
+            <div class="cell right">Amount</div>
+        </div>
+
+        ${pageItems.map((item, i) => {
+            const isFirstLabour = item.type === 'labour' && (i === 0 || pageItems[i - 1].type !== 'labour');
+            const isFirstProduct = item.type === 'product' && (i === 0 || pageItems[i - 1].type !== 'product');
+
+            return `
+        ${isFirstLabour ? `
+        <div class="grid row section-header-row">
+            <div class="cell center"></div>
+            <div class="cell" style="font-weight: bold; font-size: 14px;">Labour Charges:</div>
+            <div class="cell center"></div>
+            <div class="cell right"></div>
+            <div class="cell right"></div>
+        </div>
+        ` : ''}
+        <div class="grid row ${item.type === 'labour' ? 'labour-row' : ''}">
+            <div class="cell center">${startIdx + i + 1}</div>
+            <div class="cell">${item.name}</div>
+            <div class="cell center">${item.qty}</div>
+            <div class="cell right">${item.rate}</div>
+            <div class="cell right">${item.amount}</div>
+        </div>
+        `;
+        }).join('')}
+
+        ${!isLastPage ? `
+        <div class="filler">
+            <div></div><div></div><div></div><div></div><div></div>
+        </div>
+        ` : `
+        <div class="filler">
+            <div></div><div></div><div></div><div></div><div></div>
+        </div>
+        `}
+    </div>
+
+    ${isLastPage ? `
+    <div class="footer">
+        <div class="remarks">
+            <strong>Remarks:</strong><br>
+            ${bill.remarks || ''}
+        </div>
+
+        <div class="totals">
+            <div class="total-row grand">
+                <span>Total</span>
+                <span>${bill.grandTotal.toFixed(2)}</span>
+            </div>
+
+            <div class="total-row">
+                <span>Advance Paid</span>
+                <span>${(bill.advancePayment || 0).toFixed(2)}</span>
+            </div>
+
+            <div class="total-row">
+                <span>Balance</span>
+                <span>${(bill.grandTotal - (bill.advancePayment || 0)).toFixed(2)}</span>
+            </div>
+
+            <div class="signature">
+                <div style="padding-top:30px;">
+                    Authorized Signature
+                </div>
+            </div>
+        </div>
+    </div>
+    ` : ''}
+</div>`;
+
+        pages.push(pageHTML);
+    }
 
     const html = `<!DOCTYPE html>
 <html>
@@ -80,16 +209,20 @@ export const printBill = async (bill: Bill) => {
 * { box-sizing: border-box; }
 
 body {
-    margin: 0;
+    margin: 10px;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
+    font-size: 15px;
 }
 
-.container {
+.page-container {
     border: 2px solid #000;
-    min-height: 98vh;
+    min-height: calc(95vh - 10px);
     display: flex;
     flex-direction: column;
+}
+
+.page-break {
+    page-break-after: always;
 }
 
 /* ================= HEADER ================= */
@@ -100,17 +233,17 @@ body {
 }
 
 .header-left {
-    width: 55%;
+    width: 70%;
     border-right: 2px solid #000;
-    padding: 4px;
+    padding: 10px;
     display: flex;
-    gap: 8px;
+    gap: 20px;
     align-items: center;
 }
 
 .logo {
-    width: 70px;
-    height: 70px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
@@ -119,14 +252,14 @@ body {
 .company-name {
     color: #2fd715;
     font-weight: 900;
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .header-right {
-    width: 45%;
-    padding: 4px;
+    width: 30%;
+    padding: 6px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
 }
 
@@ -141,8 +274,9 @@ body {
 }
 
 .god-img {
-    width: 70px;
-    height: 70px;
+    filter: grayscale(100%);
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
     border: 1px solid #aaa;
     object-fit: cover;
@@ -193,6 +327,11 @@ body {
 /* ITEM ROWS */
 .row {
     border-bottom: none;
+}
+
+.labour-row {
+    font-size: 14px;
+    font-weight: normal;
 }
 
 /* EMPTY FILLER (THIS IS THE KEY PART) */
@@ -248,110 +387,14 @@ body {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 40px;
+    padding-bottom: 10px;
     font-style: italic;
 }
 </style>
 </head>
 
 <body>
-
-<div class="container">
-
-    <!-- HEADER -->
-    <div class="header">
-        <div class="header-left">
-            <img src="${logoBase64}" class="logo">
-            <div>
-                <div class="company-name">JK SERVICE & DECORS</div>
-                <div>Indhra Nagar, Konavaikkal</div>
-                <div>Bhavani, Tamil Nadu 638316</div>
-                <div><strong>Phone: 96981 92330</strong></div>
-            </div>
-        </div>
-
-        <div class="header-right">
-            <div>
-                <div class="info-row"><span class="info-label">Bill To:</span>${bill.customerName}</div>
-                <div class="info-row"><span class="info-label">Phone:</span>${bill.customerPhone}</div>
-                <div class="info-row"><span class="info-label">Bill No:</span>${bill.id}</div>
-                <div class="info-row"><span class="info-label">Date:</span>${bill.date}</div>
-                <div class="info-row"><span class="info-label">Vehicle:</span>${bill.vehicleName}</div>
-                <div class="info-row"><span class="info-label">Vehicle No:</span>${bill.vehicleNumber}</div>
-            </div>
-            <img src="${godBase64}" class="god-img">
-        </div>
-    </div>
-
-    <!-- KM -->
-    <div class="km-strip">
-        <span>Current KM: ${bill.currentKm}</span>
-        <span>Next Service KM: ${bill.nextServiceKm}</span>
-    </div>
-
-    <!-- ITEMS -->
-    <div class="items-area">
-
-        <!-- HEADER -->
-        <div class="grid header-row">
-            <div class="cell center">S.No</div>
-            <div class="cell">Particulars</div>
-            <div class="cell center">Qty</div>
-            <div class="cell right">Rate</div>
-            <div class="cell right">Amount</div>
-        </div>
-
-        <!-- ROWS -->
-        ${products.map((p, i) => `
-        <div class="grid row">
-            <div class="cell center">${i + 1}</div>
-            <div class="cell">${p.name}</div>
-            <div class="cell center">${p.qty}</div>
-            <div class="cell right">${p.rate}</div>
-            <div class="cell right">${p.amount}</div>
-        </div>
-        `).join('')}
-
-        <!-- FILLER TO FORCE FULL HEIGHT LINES -->
-        <div class="filler">
-            <div></div><div></div><div></div><div></div><div></div>
-        </div>
-
-    </div>
-
-    <!-- FOOTER -->
-    <div class="footer">
-        <div class="remarks">
-            <strong>Remarks:</strong><br>
-            ${bill.remarks || ''}
-        </div>
-
-        <div class="totals">
-            <div class="total-row grand">
-                <span>Total</span>
-                <span>${bill.grandTotal.toFixed(2)}</span>
-            </div>
-
-            <div class="total-row">
-                <span>Advance Paid</span>
-                <span>${(bill.advancePayment || 0).toFixed(2)}</span>
-            </div>
-
-            <div class="total-row">
-                <span>Balance</span>
-                <span>${(bill.grandTotal - (bill.advancePayment || 0)).toFixed(2)}</span>
-            </div>
-
-            <div class="signature">
-                <div style="padding-top:30px;">
-                    Authorized Signature
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div>
-
+${pages.join('\n')}
 </body>
 </html>
 `;
