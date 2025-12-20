@@ -206,11 +206,11 @@ export const printBill = async (bill: Bill) => {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-@page { margin: 15px; }
+@page { margin: 30px 15px 1px 15px; }
 * { box-sizing: border-box; }
 
 body {
-    margin: 10px;
+    margin: 5px;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 15px;
 }
