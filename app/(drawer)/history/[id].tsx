@@ -253,7 +253,7 @@ export default function BillDetailsScreen() {
 
             <View style={[styles.totalRow, { marginTop: 8 }]}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalValue}>₹{((bill.grandTotal || 0) - (bill.advancePayment || 0)).toFixed(2)
+              <Text style={styles.grandTotalValue}>₹{(bill.grandTotal || 0)
               }</Text>
             </View>
           </View>

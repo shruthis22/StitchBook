@@ -174,7 +174,7 @@ export const printBill = async (bill: Bill) => {
         <div class="totals">
             <div class="total-row grand">
                 <span>Total</span>
-                <span>${bill.grandTotal.toFixed(2)}</span>
+                <span>${bill.subtotal.toFixed(2)}</span>
             </div>
 
             <div class="total-row">
@@ -184,7 +184,7 @@ export const printBill = async (bill: Bill) => {
 
             <div class="total-row">
                 <span>Balance</span>
-                <span>${(bill.grandTotal - (bill.advancePayment || 0)).toFixed(2)}</span>
+                <span>${(bill.grandTotal)}</span>
             </div>
 
             <div class="signature">
