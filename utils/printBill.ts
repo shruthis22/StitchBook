@@ -210,7 +210,7 @@ export const printBill = async (bill: Bill) => {
 * { box-sizing: border-box; }
 
 body {
-    margin: 5px;
+    margin: 15px 15px 1px 15px;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 15px;
 }
