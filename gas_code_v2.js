@@ -67,6 +67,49 @@ function doPost(e) {
             sheet = ss.insertSheet(sheetName);
         }
 
+        // --- HANDLE UPDATE ACTION ---
+        if (action === 'update') {
+            var rows = sheet.getDataRange().getValues();
+            var headers = rows[0];
+            var idToUpdate = String(body.id);
+            var updates = body.updates || {};
+            var rowIndexToUpdate = -1;
+
+            for (var i = 1; i < rows.length; i++) {
+                if (String(rows[i][0]) === idToUpdate) {
+                    rowIndexToUpdate = i + 1;
+                    break;
+                }
+            }
+
+            if (rowIndexToUpdate > -1) {
+                // Add any new column headers that don't exist yet
+                var updateKeys = Object.keys(updates);
+                var missingHeaders = updateKeys.filter(function (k) { return headers.indexOf(k) === -1; });
+                if (missingHeaders.length > 0) {
+                    var lastCol = headers.length;
+                    missingHeaders.forEach(function (h, idx) {
+                        sheet.getRange(1, lastCol + idx + 1).setValue(h);
+                    });
+                    headers = sheet.getDataRange().getValues()[0];
+                }
+
+                headers.forEach(function (header, colIndex) {
+                    if (updates.hasOwnProperty(header)) {
+                        var val = updates[header];
+                        if (header === 'items') val = JSON.stringify(val);
+                        sheet.getRange(rowIndexToUpdate, colIndex + 1).setValue(val === undefined || val === null ? '' : val);
+                    }
+                });
+
+                return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Updated' }))
+                    .setMimeType(ContentService.MimeType.JSON);
+            } else {
+                return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'ID not found' }))
+                    .setMimeType(ContentService.MimeType.JSON);
+            }
+        }
+
         // --- HANDLE DELETE ACTION ---
         if (action === 'delete') {
             var rows = sheet.getDataRange().getValues();
@@ -93,7 +136,20 @@ function doPost(e) {
         }
 
         // --- HANDLE SAVE ACTION (Default) ---
-        const headers = sheet.getDataRange().getValues()[0];
+        var headers = sheet.getDataRange().getValues()[0];
+
+        // Auto-add missing column headers from body (backward compatible)
+        var bodyKeys = Object.keys(body).filter(function (k) {
+            return k !== 'action' && k !== 'type' && k !== '_sheetType';
+        });
+        var missingSaveHeaders = bodyKeys.filter(function (k) { return headers.indexOf(k) === -1; });
+        if (missingSaveHeaders.length > 0) {
+            var lastCol = headers.length;
+            missingSaveHeaders.forEach(function (h, idx) {
+                sheet.getRange(1, lastCol + idx + 1).setValue(h);
+            });
+            headers = sheet.getDataRange().getValues()[0];
+        }
 
         // Map body to headers
         const newRow = headers.map(header => {

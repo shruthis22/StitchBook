@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -57,6 +58,9 @@ export default function BillingScreen() {
   const [currentKm, setCurrentKm] = useState("");
   const [nextServiceKm, setNextServiceKm] = useState("");
   const [advancePayment, setAdvancePayment] = useState("");
+  const [pendingAmount, setPendingAmount] = useState("");
+  const [nextServiceDate, setNextServiceDate] = useState<Date | null>(null);
+  const [showServiceDatePicker, setShowServiceDatePicker] = useState(false);
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -184,6 +188,10 @@ export default function BillingScreen() {
       currentKm: currentKm ? parseFloat(currentKm) : 0,
       nextServiceKm: nextServiceKm ? parseFloat(nextServiceKm) : 0,
       advancePayment: advancePayment ? parseFloat(advancePayment) : 0,
+      pendingAmount: pendingAmount ? parseFloat(pendingAmount) : 0,
+      nextServiceDate: nextServiceDate
+        ? nextServiceDate.toISOString().split('T')[0]
+        : '',
     };
 
     try {
@@ -208,6 +216,8 @@ export default function BillingScreen() {
             setNextServiceKm('');
             setVehicleName('');
             setAdvancePayment('');
+            setPendingAmount('');
+            setNextServiceDate(null);
           }
         }
       ]);
@@ -505,6 +515,38 @@ export default function BillingScreen() {
                 onChangeText={setRemarks}
               />
             </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Next Service Reminder <Text style={styles.optionalLabel}>(Optional)</Text></Text>
+              <TouchableOpacity
+                style={styles.datePickerButton}
+                onPress={() => setShowServiceDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
+                <Text style={styles.datePickerText}>
+                  {nextServiceDate
+                    ? nextServiceDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'Set next service date'}
+                </Text>
+                {nextServiceDate && (
+                  <TouchableOpacity onPress={() => setNextServiceDate(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+              {showServiceDatePicker && (
+                <DateTimePicker
+                  value={nextServiceDate || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minimumDate={new Date()}
+                  onChange={(_event, selectedDate) => {
+                    if (Platform.OS === 'android') setShowServiceDatePicker(false);
+                    if (selectedDate) setNextServiceDate(selectedDate);
+                  }}
+                />
+              )}
+            </View>
           </View>
 
           {/* Advance Payment */}
@@ -519,6 +561,17 @@ export default function BillingScreen() {
                 keyboardType="numeric"
                 value={advancePayment}
                 onChangeText={setAdvancePayment}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Pending Amount (₹) <Text style={styles.optionalLabel}>(Not on bill)</Text></Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 200 — set 0 if fully paid"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                value={pendingAmount}
+                onChangeText={setPendingAmount}
               />
             </View>
           </View>
@@ -778,5 +831,21 @@ const styles = StyleSheet.create({
   textArea: {
     height: 80,
     paddingTop: 10,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  datePickerText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
   },
 });

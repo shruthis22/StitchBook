@@ -51,8 +51,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b944819a-1172-4746-8aa3-764ea3826f70"
+        "projectId": "5c1aef88-e10c-4645-be1f-a7b3a125652b"
       }
-    }
+    },
+    "owner": "sowraj-sece"
   }
 }

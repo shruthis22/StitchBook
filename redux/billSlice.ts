@@ -39,6 +39,8 @@ export interface Bill {
   nextServiceKm?: number;
   vehicleName?: string;
   advancePayment?: number;
+  nextServiceDate?: string;
+  pendingAmount?: number;
 }
 
 export interface BillingState {
@@ -178,6 +180,8 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
           currentKm: Number(b.currentKm) || 0,
           nextServiceKm: Number(b.nextServiceKm) || 0,
           advancePayment: b.advancePayment ? Number(b.advancePayment) : 0,
+          nextServiceDate: b.nextServiceDate ? String(b.nextServiceDate) : '',
+          pendingAmount: b.pendingAmount ? Number(b.pendingAmount) : 0,
           // CRITICAL: Ensure items is always an array of valid objects
           items: Array.isArray(parsedItems) ? parsedItems.map(sanitizeBillItem) : [],
         };
@@ -244,6 +248,27 @@ export const deleteBillFromGoogleSheets = createAsyncThunk(
   }
 );
 
+// Update Bill (partial fields — pending amount, next service date, etc.)
+export const updateBillInGoogleSheets = createAsyncThunk(
+  'billing/updateBill',
+  async (
+    { id, updates }: { id: string; updates: Partial<Bill> },
+    { rejectWithValue }
+  ) => {
+    try {
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: 'update', type: 'bills', id, updates }),
+      });
+      if (result.status === 'error') throw new Error(result.message);
+      return { id, updates };
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 // The Slice
 const billingSlice = createSlice({
 
@@ -269,6 +294,18 @@ const billingSlice = createSlice({
       // Bills
       .addCase(fetchBillsFromGoogleSheets.fulfilled, (state, action) => {
         state.bills = action.payload;
+      })
+      .addCase(saveBillToGoogleSheets.fulfilled, (state, action) => {
+        const exists = state.bills.some(b => b.id === action.payload.id);
+        if (!exists) {
+          state.bills.unshift(action.payload);
+        }
+      })
+      .addCase(updateBillInGoogleSheets.fulfilled, (state, action) => {
+        const index = state.bills.findIndex(b => b.id === action.payload.id);
+        if (index !== -1) {
+          state.bills[index] = { ...state.bills[index], ...action.payload.updates };
+        }
       })
       .addCase(deleteBillFromGoogleSheets.fulfilled, (state, action) => {
         state.bills = state.bills.filter(b => b.id !== action.payload);

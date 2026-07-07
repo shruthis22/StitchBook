@@ -60,6 +60,27 @@ export default function Layout() {
 
         />
 
+        <Drawer.Screen
+          name="upcoming-services"
+          options={{
+            drawerLabel: 'Upcoming Services',
+            title: 'Upcoming Services',
+            drawerIcon: ({ color, size }) => (
+              <Ionicons name="calendar-outline" size={size} color={color} />
+            ),
+          }}
+        />
+
+        <Drawer.Screen
+          name="pending-payments"
+          options={{
+            drawerLabel: 'Pending Payments',
+            title: 'Pending Payments',
+            drawerIcon: ({ color, size }) => (
+              <Ionicons name="wallet-outline" size={size} color={color} />
+            ),
+          }}
+        />
 
         <Drawer.Screen
           name="add"
