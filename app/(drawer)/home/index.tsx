@@ -190,44 +190,43 @@ export default function BillingScreen() {
       advancePayment: advancePayment ? parseFloat(advancePayment) : 0,
       pendingAmount: pendingAmount ? parseFloat(pendingAmount) : 0,
       nextServiceDate: nextServiceDate
-        ? nextServiceDate.toISOString().split('T')[0]
+        ? `${nextServiceDate.getFullYear()}-${String(nextServiceDate.getMonth() + 1).padStart(2, '0')}-${String(nextServiceDate.getDate()).padStart(2, '0')}`
         : '',
     };
 
     try {
-      // 1. Save to Google Sheets (Wait for it to finish)
-      // .unwrap() ensures we catch any errors thrown by the API
+      // 1. Save to Google Sheets
       await dispatch(saveBillToGoogleSheets(newBill)).unwrap();
-
-      // 2. Generate PDF (Only if save was successful)
-      await printBill(newBill);
-
-      // 3. Success Message & Reset
-      Alert.alert('Success', 'Bill saved to Google Sheets and PDF generated!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setCartItems([]);
-            setCustomerName('');
-            setPhone('');
-            setVehicle('');
-            setRemarks('');
-            setCurrentKm('');
-            setNextServiceKm('');
-            setVehicleName('');
-            setAdvancePayment('');
-            setPendingAmount('');
-            setNextServiceDate(null);
-          }
-        }
-      ]);
-
-    } catch (error: any) {
-      Alert.alert("Failed to Save", "Check you Internet");
-      console.error(error);
-    } finally {
-      // Stop Loading
+      
+      // STOP LOADING IMMEDIATELY! (Fixes the print dialog freeze)
       setIsSaving(false);
+      
+      // 2. Generate PDF in the background (Remove 'await')
+      printBill(newBill).catch(console.error);
+
+      // 3. Reset Form IMMEDIATELY
+      setCartItems([]);
+      setCustomerName('');
+      setPhone('');
+      setVehicle('');
+      setRemarks('');
+      setCurrentKm('');
+      setNextServiceKm('');
+      setVehicleName('');
+      setAdvancePayment('');
+      setPendingAmount('');
+      setNextServiceDate(null);
+      setProductName("");
+      setQty('1');
+      setRate('');
+      setLabourName('');
+      setLabourCost('');
+
+      // 4. Show Success Alert last
+      Alert.alert('Success', 'Bill saved to Google Sheets and PDF generated!');
+    } catch (error: any) {
+      setIsSaving(false); // Ensure loading stops on error
+      Alert.alert("Failed to Save", "Check your Internet Connection");
     }
   };
 

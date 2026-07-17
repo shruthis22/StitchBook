@@ -293,7 +293,21 @@ const billingSlice = createSlice({
 
       // Bills
       .addCase(fetchBillsFromGoogleSheets.fulfilled, (state, action) => {
-        state.bills = action.payload;
+        const fetchedBills = action.payload;
+        
+        // Merge fetched bills with local state to preserve dropped fields
+        state.bills = fetchedBills.map((fetchedBill: Bill) => {
+          const localBill = state.bills.find(b => b.id === fetchedBill.id);
+          if (localBill) {
+            return {
+              ...fetchedBill,
+              nextServiceDate: fetchedBill.nextServiceDate || localBill.nextServiceDate,
+              advancePayment: fetchedBill.advancePayment || localBill.advancePayment,
+              pendingAmount: fetchedBill.pendingAmount || localBill.pendingAmount,
+            };
+          }
+          return fetchedBill;
+        });
       })
       .addCase(saveBillToGoogleSheets.fulfilled, (state, action) => {
         const exists = state.bills.some(b => b.id === action.payload.id);

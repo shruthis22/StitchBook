@@ -36,6 +36,9 @@ function doGet(e) {
                 } catch (e) {
                     obj[header] = [];
                 }
+            } else if ((header === 'date' || header === 'nextServiceDate') && row[index] instanceof Date) {
+                // Force strict YYYY-MM-DD formatting to prevent timezone drift
+                obj[header] = Utilities.formatDate(row[index], Session.getScriptTimeZone(), "yyyy-MM-dd");
             } else {
                 obj[header] = row[index];
             }
