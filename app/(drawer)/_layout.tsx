@@ -56,6 +56,8 @@ export default function Layout() {
             drawerIcon: ({ color, size }) => (
               <Ionicons name="archive-outline" size={size} color={color} />
             ),
+            // @ts-ignore
+            unmountOnBlur: true,
           }}
 
         />

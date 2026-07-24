@@ -30,7 +30,7 @@ function doGet(e) {
         let obj = {};
         headers.forEach((header, index) => {
             // Parse 'items' only if we are reading bills
-            if (header === 'items' && row[index] && type === 'bills') {
+            if ((header === 'items' || header === 'paymentHistory') && row[index] && type === 'bills') {
                 try {
                     obj[header] = JSON.parse(row[index]);
                 } catch (e) {
@@ -100,7 +100,7 @@ function doPost(e) {
                 headers.forEach(function (header, colIndex) {
                     if (updates.hasOwnProperty(header)) {
                         var val = updates[header];
-                        if (header === 'items') val = JSON.stringify(val);
+                        if (header === 'items' || header === 'paymentHistory') val = JSON.stringify(val);
                         sheet.getRange(rowIndexToUpdate, colIndex + 1).setValue(val === undefined || val === null ? '' : val);
                     }
                 });
@@ -157,7 +157,7 @@ function doPost(e) {
         // Map body to headers
         const newRow = headers.map(header => {
             const value = body[header];
-            if (header === 'items') return JSON.stringify(value);
+            if (header === 'items' || header === 'paymentHistory') return JSON.stringify(value);
             return value === undefined || value === null ? '' : value;
         });
 

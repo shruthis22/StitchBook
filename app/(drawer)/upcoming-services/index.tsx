@@ -15,9 +15,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bill, fetchBillsFromGoogleSheets } from '../../../redux/billSlice';
+import { Bill, fetchBillsFromGoogleSheets, updateBillInGoogleSheets } from '../../../redux/billSlice';
 import { AppDispatch, RootState } from '../../../redux/store';
-
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Platform } from 'react-native';
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -43,6 +44,9 @@ export default function UpcomingServicesScreen() {
 
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState(new Date());
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchBillsFromGoogleSheets());
@@ -59,6 +63,28 @@ export default function UpcomingServicesScreen() {
     }
   }, [dispatch]);
 
+  const handleMarkCompleted = (id: string) => {
+    dispatch(updateBillInGoogleSheets({ id, updates: { nextServiceDate: '' } }));
+  };
+
+  const handleEditDate = (bill: Bill) => {
+    setEditingBillId(bill.id);
+    setPickerDate(bill.nextServiceDate ? parseServiceDate(bill.nextServiceDate) : new Date());
+    setShowPicker(true);
+  };
+
+  const onDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    setShowPicker(Platform.OS === 'ios');
+    if (selectedDate && editingBillId) {
+      setPickerDate(selectedDate);
+      const isoDate = selectedDate.toISOString();
+      dispatch(updateBillInGoogleSheets({ id: editingBillId, updates: { nextServiceDate: isoDate } }));
+      setEditingBillId(null);
+      setShowPicker(false);
+    } else {
+      setEditingBillId(null);
+    }
+  };
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -142,6 +168,23 @@ export default function UpcomingServicesScreen() {
             </View>
           )}
         </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleEditDate(item)}
+          >
+            <Ionicons name="pencil" size={16} color="#4B5563" />
+            <Text style={styles.actionButtonText}>Edit Date</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.completeButton]}
+            onPress={() => handleMarkCompleted(item.id)}
+          >
+            <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />
+            <Text style={styles.completeButtonText}>Completed</Text>
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -183,7 +226,7 @@ export default function UpcomingServicesScreen() {
           <FlatList
             data={upcomingBills}
             renderItem={renderItem}
-            keyExtractor={item => item.id}
+            keyExtractor={(item, index) => item.id + '-' + index}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -197,6 +240,15 @@ export default function UpcomingServicesScreen() {
                 </Text>
               </View>
             }
+          />
+        )}
+        
+        {showPicker && (
+          <DateTimePicker
+            value={pickerDate}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
           />
         )}
       </View>
@@ -271,4 +323,33 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   todayTagText: { fontSize: 11, fontWeight: '600', color: '#D97706' },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+    gap: 4,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  completeButton: {
+    backgroundColor: '#D1FAE5',
+  },
+  completeButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#059669',
+  },
 });

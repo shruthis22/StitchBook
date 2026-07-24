@@ -90,6 +90,10 @@ export default function BillingHistoryScreen() {
     // Hide picker immediately on Android
     if (Platform.OS === 'android') setShowPicker(false);
 
+    if (event.type === 'dismissed') {
+      return;
+    }
+
     if (selectedDate) {
       if (pickerMode === 'start') {
         setStartDate(selectedDate);
@@ -165,30 +169,30 @@ export default function BillingHistoryScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.row}>
-          <View>
-            <Text style={styles.customerName}>{item.customerName}</Text>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.customerName} numberOfLines={1}>{item.customerName}</Text>
             <Text style={styles.vehicleInfo}>{item.vehicleNumber}</Text>
           </View>
-          <Text style={styles.amount}>₹{item.amount.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.amount}>₹{item.amount.toFixed(2)}</Text>
+            <TouchableOpacity
+              style={{ marginLeft: 10, padding: 4 }}
+              onPress={() => handleDelete(item.id)}
+            >
+              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={[styles.divider]} />
 
         <View style={styles.row}>
-          <Text style={styles.invoiceInfo}>Invoice {item.id} • {formatDate(item.date)}</Text>
+          <Text style={[styles.invoiceInfo, { flex: 1 }]} numberOfLines={1}>
+            Invoice {item.id} • {formatDate(item.date)}
+          </Text>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-              <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
-            </View>
-
-            {/* Delete Button - Placed discreetly next to status */}
-            <TouchableOpacity
-              style={{ marginLeft: 12, padding: 4 }}
-              onPress={() => handleDelete(item.id)}
-            >
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            </TouchableOpacity>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status}</Text>
           </View>
         </View>
 
@@ -279,7 +283,7 @@ export default function BillingHistoryScreen() {
           <FlatList
             data={filteredBills}
             renderItem={renderItem}
-            keyExtractor={item => (item.id || Math.random()).toString()}
+            keyExtractor={(item, index) => (item.id || Math.random()).toString() + '-' + index}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={

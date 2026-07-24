@@ -77,10 +77,16 @@ export default function BillingScreen() {
     type: 'product' | 'labour'
   }[]>([]);
 
+  // --- CALCULATIONS ---
   const subtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.amount, 0), [cartItems]);
   const tax = subtotal * 0; // 0% Tax
-  const advanceVal = parseFloat(advancePayment) || 0;
-  const grandTotal = subtotal + tax - advanceVal;
+  const grandTotal = subtotal + tax;
+
+  useEffect(() => {
+    const advance = parseFloat(advancePayment) || 0;
+    const pending = Math.max(0, grandTotal - advance);
+    setPendingAmount(pending > 0 ? String(pending) : '0');
+  }, [grandTotal, advancePayment]);
 
   const handleSearchProduct = (text: string) => {
     setProductName(text);
@@ -170,14 +176,13 @@ export default function BillingScreen() {
     setIsSaving(true);
 
     const newBill: Bill = {
-      //id: `#INV-${Math.floor(1000 + Math.random() * 9000)}`,
-      id: `#INV-${Date.now().toString().slice(-6)}`,
+      id: `#INV-${Math.floor(100000 + Math.random() * 900000)}`,
       customerName,
       vehicleNumber: vehicle || 'N/A',
       vehicleName: vehicleName || '',
       customerPhone: phone,
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      status: 'Paid',
+      status: (pendingAmount && parseFloat(pendingAmount) > 0) ? 'Pending' : 'Paid',
       amount: grandTotal,
       subtotal,
       tax,
@@ -192,6 +197,12 @@ export default function BillingScreen() {
       nextServiceDate: nextServiceDate
         ? `${nextServiceDate.getFullYear()}-${String(nextServiceDate.getMonth() + 1).padStart(2, '0')}-${String(nextServiceDate.getDate()).padStart(2, '0')}`
         : '',
+      paymentHistory: (() => {
+        const adv = advancePayment ? parseFloat(advancePayment) : 0;
+        const pen = pendingAmount ? parseFloat(pendingAmount) : 0;
+        const initialPayment = adv > 0 ? adv : (pen === 0 ? grandTotal : 0);
+        return initialPayment > 0 ? [{ date: new Date().toISOString(), amount: initialPayment }] : [];
+      })()
     };
 
     try {
@@ -563,14 +574,11 @@ export default function BillingScreen() {
               />
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Pending Amount (₹) <Text style={styles.optionalLabel}>(Not on bill)</Text></Text>
+              <Text style={styles.label}>Pending Amount (₹) <Text style={styles.optionalLabel}>(Auto-calculated)</Text></Text>
               <TextInput
-                style={styles.input}
-                placeholder="e.g. 200 — set 0 if fully paid"
-                placeholderTextColor="#999"
-                keyboardType="numeric"
+                style={[styles.input, { backgroundColor: '#E5E7EB', color: '#6B7280' }]}
                 value={pendingAmount}
-                onChangeText={setPendingAmount}
+                editable={false}
               />
             </View>
           </View>

@@ -42,7 +42,7 @@ export default function PendingPaymentsScreen() {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
-  const [editAmount, setEditAmount] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -60,9 +60,15 @@ export default function PendingPaymentsScreen() {
     }
   }, [dispatch]);
 
+  const getCalculatedPendingAmount = (bill: Bill) => {
+    if (bill.pendingAmount && bill.pendingAmount > 0) return bill.pendingAmount;
+    if (bill.status === 'Pending') return Math.max(0, bill.grandTotal - (bill.advancePayment || 0));
+    return 0;
+  };
+
   const pendingBills = useMemo(() => {
     return bills
-      .filter(bill => (bill.pendingAmount ?? 0) > 0)
+      .filter(bill => bill.status === 'Pending' || (bill.pendingAmount && bill.pendingAmount > 0))
       .filter(bill => {
         const q = search.toLowerCase();
         return (
@@ -71,40 +77,63 @@ export default function PendingPaymentsScreen() {
           String(bill.id || '').toLowerCase().includes(q)
         );
       })
-      .sort((a, b) => (b.pendingAmount ?? 0) - (a.pendingAmount ?? 0));
+      .sort((a, b) => getCalculatedPendingAmount(b) - getCalculatedPendingAmount(a));
   }, [bills, search]);
 
   const totalPending = useMemo(
-    () => pendingBills.reduce((sum, b) => sum + (b.pendingAmount ?? 0), 0),
+    () => pendingBills.reduce((sum, b) => sum + getCalculatedPendingAmount(b), 0),
     [pendingBills]
   );
 
   const openEditModal = (bill: Bill) => {
     setEditingBill(bill);
-    setEditAmount(String(bill.pendingAmount ?? 0));
+    setPaymentAmount('');
   };
 
   const handleSavePending = async () => {
     if (!editingBill) return;
 
-    const newAmount = parseFloat(editAmount);
-    if (isNaN(newAmount) || newAmount < 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount (0 or more).');
+    const newPayment = parseFloat(paymentAmount);
+    if (isNaN(newPayment) || newPayment <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount greater than 0.');
       return;
     }
+
+    const currentPending = getCalculatedPendingAmount(editingBill);
+    if (newPayment > currentPending) {
+      Alert.alert('Amount Too High', `Payment cannot exceed pending amount (₹${currentPending}).`);
+      return;
+    }
+
+    const newPending = currentPending - newPayment;
+    const currentAdvance = editingBill.advancePayment ?? 0;
+    const newAdvance = currentAdvance + newPayment;
+    const newStatus = newPending === 0 ? 'Paid' : editingBill.status;
+
+    const newHistoryEntry = {
+      date: new Date().toISOString(),
+      amount: newPayment
+    };
+    
+    const newHistory = [...(editingBill.paymentHistory || []), newHistoryEntry];
 
     setIsSaving(true);
     try {
       await dispatch(
         updateBillInGoogleSheets({
           id: editingBill.id,
-          updates: { pendingAmount: newAmount },
+          updates: { 
+            pendingAmount: newPending, 
+            advancePayment: newAdvance,
+            status: newStatus,
+            paymentHistory: newHistory
+          },
         })
       ).unwrap();
       setEditingBill(null);
-      setEditAmount('');
+      setPaymentAmount('');
     } catch (error: any) {
-      Alert.alert('Update Failed', error.message || 'Could not update pending amount.');
+      Alert.alert('Update Failed', error.message || 'Could not update payment.');
     } finally {
       setIsSaving(false);
     }
@@ -126,7 +155,7 @@ export default function PendingPaymentsScreen() {
             <Text style={styles.customerName}>{item.customerName}</Text>
             <Text style={styles.vehicleInfo}>{item.vehicleNumber || 'N/A'}</Text>
           </View>
-          <Text style={styles.pendingAmount}>₹{(item.pendingAmount ?? 0).toFixed(2)}</Text>
+          <Text style={styles.pendingAmount}>₹{getCalculatedPendingAmount(item).toFixed(2)}</Text>
         </View>
 
         <View style={styles.divider} />
@@ -139,8 +168,8 @@ export default function PendingPaymentsScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.updateButton} onPress={() => openEditModal(item)}>
-        <Ionicons name="create-outline" size={16} color="#3B82F6" />
-        <Text style={styles.updateButtonText}>Update Pending</Text>
+        <Ionicons name="add-circle-outline" size={16} color="#3B82F6" />
+        <Text style={styles.updateButtonText}>Add Payment</Text>
       </TouchableOpacity>
     </View>
   );
@@ -190,7 +219,7 @@ export default function PendingPaymentsScreen() {
           <FlatList
             data={pendingBills}
             renderItem={renderItem}
-            keyExtractor={item => item.id}
+            keyExtractor={(item, index) => item.id + '-' + index}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -214,20 +243,21 @@ export default function PendingPaymentsScreen() {
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Update Pending Amount</Text>
+            <Text style={styles.modalTitle}>Add Payment</Text>
             {editingBill && (
               <Text style={styles.modalSubtitle}>
                 {editingBill.customerName} — {editingBill.id}
+                {'\n'}Pending: ₹{getCalculatedPendingAmount(editingBill).toFixed(2)}
               </Text>
             )}
 
-            <Text style={styles.label}>Pending Amount (₹)</Text>
+            <Text style={styles.label}>Payment Amount (₹)</Text>
             <TextInput
               style={styles.modalInput}
               keyboardType="numeric"
-              value={editAmount}
-              onChangeText={setEditAmount}
-              placeholder="0 if fully paid"
+              value={paymentAmount}
+              onChangeText={setPaymentAmount}
+              placeholder="Enter amount received"
               autoFocus
             />
 
@@ -236,7 +266,7 @@ export default function PendingPaymentsScreen() {
                 style={styles.cancelButton}
                 onPress={() => {
                   setEditingBill(null);
-                  setEditAmount('');
+                  setPaymentAmount('');
                 }}
                 disabled={isSaving}
               >

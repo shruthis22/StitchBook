@@ -184,7 +184,7 @@ export const printBill = async (bill: Bill) => {
 
             <div class="total-row">
                 <span>Balance</span>
-                <span>${(bill.grandTotal)}</span>
+                <span>${(bill.pendingAmount ?? Math.max(0, bill.grandTotal - (bill.advancePayment || 0))).toFixed(2)}</span>
             </div>
 
             <div class="signature">

@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { RootState } from './store';
 
 
 
@@ -41,6 +42,7 @@ export interface Bill {
   advancePayment?: number;
   nextServiceDate?: string;
   pendingAmount?: number;
+  paymentHistory?: { date: string; amount: number }[];
 }
 
 export interface BillingState {
@@ -156,12 +158,32 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
         try {
           if (typeof b.items === 'string') {
             parsedItems = JSON.parse(b.items);
+            // Handle double stringification
+            while (typeof parsedItems === 'string') {
+              parsedItems = JSON.parse(parsedItems);
+            }
           } else if (Array.isArray(b.items)) {
             parsedItems = b.items;
           }
         } catch (e) {
           console.warn("Failed to parse items for bill", b.id);
           parsedItems = [];
+        }
+
+        let parsedHistory: { date: string; amount: number }[] = [];
+        try {
+          if (typeof b.paymentHistory === 'string') {
+            parsedHistory = JSON.parse(b.paymentHistory);
+            // Handle double stringification
+            while (typeof parsedHistory === 'string') {
+              parsedHistory = JSON.parse(parsedHistory);
+            }
+          } else if (Array.isArray(b.paymentHistory)) {
+            parsedHistory = b.paymentHistory;
+          }
+        } catch (e) {
+          console.warn("Failed to parse paymentHistory for bill", b.id);
+          parsedHistory = [];
         }
 
         return {
@@ -184,6 +206,7 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
           pendingAmount: b.pendingAmount ? Number(b.pendingAmount) : 0,
           // CRITICAL: Ensure items is always an array of valid objects
           items: Array.isArray(parsedItems) ? parsedItems.map(sanitizeBillItem) : [],
+          paymentHistory: Array.isArray(parsedHistory) ? parsedHistory : [],
         };
       });
 
@@ -199,10 +222,16 @@ export const saveBillToGoogleSheets = createAsyncThunk(
   'billing/saveBill',
   async (newBill: Bill, { rejectWithValue }) => {
     try {
+      const payload = {
+        ...newBill,
+        items: JSON.stringify(newBill.items || []),
+        paymentHistory: JSON.stringify(newBill.paymentHistory || []),
+        _sheetType: 'bills'
+      };
       const result = await safeFetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ ...newBill, _sheetType: 'bills' }),
+        body: JSON.stringify(payload),
       });
       if (result.status === 'error') throw new Error(result.message);
       return newBill;
@@ -248,20 +277,42 @@ export const deleteBillFromGoogleSheets = createAsyncThunk(
   }
 );
 
-// Update Bill (partial fields — pending amount, next service date, etc.)
 export const updateBillInGoogleSheets = createAsyncThunk(
   'billing/updateBill',
   async (
     { id, updates }: { id: string; updates: Partial<Bill> },
-    { rejectWithValue }
+    { rejectWithValue, getState }
   ) => {
     try {
-      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
+      const state = getState() as RootState;
+      const existingBill = state.billing.bills.find((b: any) => b.id === id);
+      if (!existingBill) throw new Error('Bill not found locally');
+
+      const updatedBill = { ...existingBill, ...updates };
+
+      // 1. Delete old row
+      await safeFetch(GOOGLE_SHEET_API_URL, {
         method: 'POST',
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ action: 'update', type: 'bills', id, updates }),
+        body: JSON.stringify({ action: 'delete', type: 'bills', id }),
       });
-      if (result.status === 'error') throw new Error(result.message);
+
+      // 2. Save updated row
+      const payload = {
+        ...updatedBill,
+        items: JSON.stringify(updatedBill.items || []),
+        paymentHistory: JSON.stringify(updatedBill.paymentHistory || []),
+        _sheetType: 'bills'
+      };
+      
+      const saveResult = await safeFetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+
+      if (saveResult.status === 'error') throw new Error(saveResult.message);
+      
       return { id, updates };
     } catch (error: any) {
       return rejectWithValue(error.message);
@@ -304,6 +355,7 @@ const billingSlice = createSlice({
               nextServiceDate: fetchedBill.nextServiceDate || localBill.nextServiceDate,
               advancePayment: fetchedBill.advancePayment || localBill.advancePayment,
               pendingAmount: fetchedBill.pendingAmount || localBill.pendingAmount,
+              paymentHistory: fetchedBill.paymentHistory || localBill.paymentHistory,
             };
           }
           return fetchedBill;

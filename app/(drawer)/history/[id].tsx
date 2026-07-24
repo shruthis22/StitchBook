@@ -10,11 +10,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { deleteBillFromGoogleSheets } from '../../../redux/billSlice';
+import { deleteBillFromGoogleSheets, updateBillInGoogleSheets } from '../../../redux/billSlice';
 import { AppDispatch, RootState } from '../../../redux/store';
 import { printBill } from '../../../utils/printBill';
 
@@ -33,6 +37,58 @@ export default function BillDetailsScreen() {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
+
+  const handleAddPayment = async () => {
+    if (!bill) return;
+
+    const newPayment = parseFloat(paymentAmount);
+    if (isNaN(newPayment) || newPayment <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    const currentPending = bill.pendingAmount ?? 0;
+    if (newPayment > currentPending) {
+      Alert.alert('Amount Too High', `Payment cannot exceed pending amount (₹${currentPending}).`);
+      return;
+    }
+
+    const newPending = currentPending - newPayment;
+    const currentAdvance = bill.advancePayment ?? 0;
+    const newAdvance = currentAdvance + newPayment;
+    const newStatus = newPending === 0 ? 'Paid' : bill.status;
+
+    const newHistoryEntry = {
+      date: new Date().toISOString(),
+      amount: newPayment
+    };
+    
+    const newHistory = [...(bill.paymentHistory || []), newHistoryEntry];
+
+    setIsSavingPayment(true);
+    try {
+      await dispatch(
+        updateBillInGoogleSheets({
+          id: bill.id,
+          updates: { 
+            pendingAmount: newPending, 
+            advancePayment: newAdvance,
+            status: newStatus,
+            paymentHistory: newHistory
+          },
+        })
+      ).unwrap();
+      setShowPaymentModal(false);
+      setPaymentAmount('');
+    } catch (error: any) {
+      Alert.alert('Update Failed', error.message || 'Could not update payment.');
+    } finally {
+      setIsSavingPayment(false);
+    }
+  };
 
   if (!bill) {
     return (
@@ -258,6 +314,35 @@ export default function BillDetailsScreen() {
             </View>
           </View>
 
+          {/* Payment History */}
+          {(bill.paymentHistory && bill.paymentHistory.length > 0) && (
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Payment History</Text>
+              {bill.paymentHistory.map((payment, index) => (
+                <View key={index} style={styles.infoRow}>
+                  <View style={styles.iconBox}><Ionicons name="cash" size={16} color="#059669" /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoText}>Paid ₹{payment.amount.toFixed(2)}</Text>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                      {new Date(payment.date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Add Payment Button */}
+          {((bill.pendingAmount ?? 0) > 0) && (
+            <TouchableOpacity 
+              style={[styles.fillButton, { marginBottom: 16, backgroundColor: '#059669' }]} 
+              onPress={() => setShowPaymentModal(true)}
+            >
+              <Ionicons name="add-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.fillButtonText}>Add Payment</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
@@ -288,6 +373,55 @@ export default function BillDetailsScreen() {
           </View>
 
         </ScrollView>
+
+        <Modal visible={showPaymentModal} transparent animationType="fade">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Add Payment</Text>
+              <Text style={styles.modalSubtitle}>
+                Pending: ₹{bill.pendingAmount}
+              </Text>
+
+              <Text style={styles.labelMeta}>Payment Amount (₹)</Text>
+              <TextInput
+                style={styles.modalInput}
+                keyboardType="numeric"
+                value={paymentAmount}
+                onChangeText={setPaymentAmount}
+                placeholder="Enter amount received"
+                autoFocus
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowPaymentModal(false);
+                    setPaymentAmount('');
+                  }}
+                  disabled={isSavingPayment}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, isSavingPayment && { opacity: 0.7 }]}
+                  onPress={handleAddPayment}
+                  disabled={isSavingPayment}
+                >
+                  {isSavingPayment ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
       </View>
     </SafeAreaView>
   );
@@ -432,5 +566,48 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
     marginTop: 2
-  }
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  modalSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, marginBottom: 16 },
+  modalInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 20,
+    marginTop: 6,
+  },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  cancelButtonText: { fontSize: 15, fontWeight: '600', color: '#6B7280' },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+  },
+  saveButtonText: { fontSize: 15, fontWeight: '600', color: '#FFF' },
 });

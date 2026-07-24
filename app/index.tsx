@@ -13,7 +13,7 @@ export default function Index() {
   const router = useRouter();
   
   // Select auth state from Redux
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const isAuthenticated = useSelector((state: any) => state.auth.isAuthenticated);
 
   useEffect(() => {
     // Add a small delay or check immediately
