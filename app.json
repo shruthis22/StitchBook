@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Isaii Billsuite-JK",
+    "name": "Car Point",
     "slug": "AutoMobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/playstore-icon.png",
+    "icon": "./assets/playstore-icon.jpg",
     "scheme": "automobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/playstore-icon.png"
+        "foregroundImage": "./assets/playstore-icon.jpg"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -33,7 +33,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/playstore-icon.png",
+          "image": "./assets/playstore-icon.jpg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -42,7 +42,9 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

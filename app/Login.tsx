@@ -10,9 +10,7 @@ export default function LoginScreen() {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  // REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT URL
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhPjGiav5ghkYWM_5XG9NT39e1l3Zd5s0CjoNWg_54717tMd0DfY9Mbwd6PLwF4ZUS/exec";
-
+  // REPLACE THIS WITH YOUR NEW DEPLOYED GOOGLE APPS SCRIPT URL
   const handleLogin = async () => {
     if (pin.length < 4) {
       Alert.alert("Invalid Input", "PIN must be at least 4 digits");
@@ -22,28 +20,12 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // Sending POST request to Google Apps Script
-      const response = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'login', pin: pin }),
-      });
-
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        // 1. Save user to Redux (Redux Persist handles storage)
-        dispatch(loginSuccess({ name: String(result.user) }));
-
-        // 2. Navigate to your main app
-        router.replace('/(drawer)/home');
-      } else {
-        Alert.alert("Access Denied", "Incorrect PIN");
-        setPin(''); // Clear the PIN
-      }
+      // Bypassing the server-side PIN check to log in locally
+      dispatch(loginSuccess({ name: "Car Point Admin" }));
+      router.replace('/(drawer)/home');
     } catch (error) {
       console.error(error);
-      Alert.alert("Network Error", "Could not connect to the server.");
+      Alert.alert("Error", "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -53,7 +35,7 @@ export default function LoginScreen() {
     <View style={styles.container}>
 
       <Image
-        source={require("../assets/logo-isaii.png")}
+        source={require("../assets/company-logo.jpg")}
         style={styles.logo}
       />
       <Text style={styles.header}>Enter Access PIN</Text>

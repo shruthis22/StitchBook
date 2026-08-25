@@ -3,7 +3,8 @@ import { RootState } from './store';
 
 
 
-const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxRVHgm4F4gXPBStRMKuDaHvUGTtnd-GeIMfNjHrtzW2AsGZ1p9sViVDWRC9b3fCuAh/exec";
+// REPLACE THIS WITH YOUR NEW DEPLOYED GOOGLE APPS SCRIPT URL
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyl1eF7NiOand9pZNI7Sd7OFkp6I-F_bVFarhpReQou52d8vFEAfUUa2I9wZMYpbOd1/exec";
 
 
 // --- Interfaces ---

@@ -24,7 +24,7 @@ export const printBill = async (bill: Bill) => {
     const ITEMS_PER_PAGE = 23;
     const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
 
-    const logoAsset = Asset.fromModule(require('../assets/company-logo.png'));
+    const logoAsset = Asset.fromModule(require('../assets/company-logo-transparent.png'));
     await logoAsset.downloadAsync();
 
     // Load God Image
@@ -78,15 +78,13 @@ export const printBill = async (bill: Bill) => {
     <div class="header">
         <div class="header-left">
             <img src="${logoBase64}" class="logo">
-            <div style="margin-left: 20px; font-size: 18px; margin-right: 20px;">
-                <div class="company-name">JK CAR SERVICE & DECORS</div>
-                <div>Indhra Nagar, Konavaikkal</div>
-                <div>Bhavani, Tamil Nadu 638316</div>
-                <div><strong>Phone1: 96981 92330</strong></div>
-                <div><strong>Phone2: 99721 68980</strong></div>
+            <div style="margin-left: 20px; font-size: 14px; margin-right: 20px;">
+                <div class="company-name">No1 CAR POINT - Multi Car Works</div>
+                <div>Grace School Opposite, Kavindapadi Road,</div>
+                <div>Anna Nagar, Erode - 638 316.</div>
+                <div><strong>Mahesh: 99946 15538</strong></div>
             </div>
     
-            <img src="${godBase64}" class="god-img">
         </div>
 
         <div class="header-right">
@@ -118,6 +116,7 @@ export const printBill = async (bill: Bill) => {
 
         const pageHTML = `
 <div class="page-container ${!isLastPage ? 'page-break' : ''}">
+    <img src="${logoBase64}" class="watermark-logo">
     ${generateHeader(pageIndex + 1, totalPages)}
 
     <div class="items-area">
@@ -220,6 +219,19 @@ body {
     min-height: calc(95vh - 10px);
     display: flex;
     flex-direction: column;
+    position: relative;
+    z-index: 1;
+}
+
+.watermark-logo {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    opacity: 0.12;
+    z-index: -1;
+    pointer-events: none;
 }
 
 .page-break {
@@ -240,21 +252,21 @@ body {
     display: flex;
     gap: 20px;
     align-items: center;
-    position: relative; /* Added for absolute positioning of children */
+    position: relative;
 }
 
 .logo {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    border: 1px solid #aaa;
-    object-fit: cover;
+    width: 155px;
+    height: auto;
+    object-fit: contain;
+    margin-right: -25px;
+    margin-left: -5px;
 }
 
 .company-name {
     color: #2fd715;
     font-weight: 900;
-    font-size: 22px;
+    font-size: 18px;
     white-space: nowrap;
 }
 
@@ -264,6 +276,7 @@ body {
     display: flex;
     justify-content: flex-start;
     align-items: center;
+    font-size: 12px;
 }
 
 .info-row {

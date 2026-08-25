@@ -7,7 +7,7 @@ import authReducer from "./authSlice";
 
 
 const persistConfig = {
-  key: 'root',
+  key: 'root_carpoint',
   storage: AsyncStorage,
   whitelist: ['billing', 'auth'],
 };

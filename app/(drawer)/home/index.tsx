@@ -339,9 +339,9 @@ export default function BillingScreen() {
               <View style={styles.column}>
                 <Text style={styles.label}>Rate (₹)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: '#E5E7EB', color: '#6B7280' }]}
                   value={rate}
-                  onChangeText={setRate}
+                  editable={false}
                   keyboardType="numeric"
                   placeholder="0.00"
                 />
