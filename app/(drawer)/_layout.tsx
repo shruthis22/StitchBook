@@ -1,110 +1,82 @@
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Drawer } from 'expo-router/drawer';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '../../redux/authSlice';
+import { loadAppData } from '../../redux/stitchbookSlice';
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 
+import { LinearGradient } from 'expo-linear-gradient';
 
+export default function DrawerLayout() {
+  const dispatch = useDispatch();
+  const router = useRouter();
 
+  useEffect(() => {
+    dispatch(loadAppData() as any);
+  }, [dispatch]);
 
-export default function Layout() {
-
+  const handleLogout = () => {
+    dispatch(logout());
+    router.replace('/Login');
+  };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-
-      <Drawer
-        screenOptions={{
-          
-          headerShown: false,
-
-          // Drawer styling options
-          drawerActiveTintColor: '#3B82F6',
-          drawerInactiveTintColor: '#333',
-          drawerLabelStyle: {
-            marginLeft: -5,
-            fontSize: 15,
-            
-          },
-          drawerStyle:{
-            width:300,
-          }
+    <Drawer
+      screenOptions={{
+        headerBackground: () => (
+          <LinearGradient colors={['#352A23', '#4A3B32', '#FFCBA4']} locations={[0, 0.8, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={{ flex: 1 }}
+          />
+        ),
+        headerStyle: { backgroundColor: 'transparent' },
+        headerTintColor: '#fff',
+        drawerActiveBackgroundColor: '#F2EBE5',
+        drawerActiveTintColor: '#4A3B32',
+        drawerInactiveTintColor: '#6B5B52',
+        headerRight: () => (
+          <TouchableOpacity onPress={handleLogout} style={{ marginRight: 15 }}>
+            <MaterialIcons name="logout" size={24} color="#fff" />
+          </TouchableOpacity>
+        )
+      }}
+    >
+      <Drawer.Screen
+        name="dashboard"
+        options={{
+          title: 'Dashboard',
+          drawerIcon: ({ color }) => <MaterialIcons name="dashboard" size={24} color={color} />,
         }}
-      >
-
-
-       
-
-
-        <Drawer.Screen
-          name="home"
-
-          options={{
-            drawerLabel: 'Billing Home',
-            title: 'Billing',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="receipt-outline" size={size} color={color} />
-            ),
-          }}
-
-        />
-
-        <Drawer.Screen
-          name="history"
-
-          options={{
-            drawerLabel: 'History',
-            title: 'History',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="archive-outline" size={size} color={color} />
-            ),
-            // @ts-ignore
-            unmountOnBlur: true,
-          }}
-
-        />
-
-        <Drawer.Screen
-          name="upcoming-services"
-          options={{
-            drawerLabel: 'Upcoming Services',
-            title: 'Upcoming Services',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="calendar-outline" size={size} color={color} />
-            ),
-          }}
-        />
-
-        <Drawer.Screen
-          name="pending-payments"
-          options={{
-            drawerLabel: 'Pending Payments',
-            title: 'Pending Payments',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="wallet-outline" size={size} color={color} />
-            ),
-          }}
-        />
-
-        <Drawer.Screen
-          name="add"
-
-          options={{
-            drawerLabel: 'Add Product',
-            title: 'Add',
-            drawerIcon: ({ color, size }) => (
-              <Ionicons name="add-circle-outline" size={size} color={color} />
-            ),
-          }}
-
-        />
-
-
-
-       
-      </Drawer>
-
-
-    </GestureHandlerRootView>
-
-
+      />
+      <Drawer.Screen
+        name="new-order"
+        options={{
+          title: 'New Order',
+          drawerIcon: ({ color }) => <MaterialIcons name="add-circle-outline" size={24} color={color} />,
+        }}
+      />
+      <Drawer.Screen
+        name="customers"
+        options={{
+          title: 'Customers',
+          drawerIcon: ({ color }) => <MaterialIcons name="people-outline" size={24} color={color} />,
+        }}
+      />
+      <Drawer.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          drawerIcon: ({ color }) => <MaterialIcons name="list-alt" size={24} color={color} />,
+        }}
+      />
+      <Drawer.Screen
+        name="payments"
+        options={{
+          title: 'Payments',
+          drawerIcon: ({ color }) => <MaterialIcons name="payment" size={24} color={color} />,
+        }}
+      />
+    </Drawer>
   );
 }

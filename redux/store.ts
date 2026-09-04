@@ -1,39 +1,33 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
+import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
-import billingReducer from './billSlice';
-import authReducer from "./authSlice";
 
+import authReducer from './authSlice';
+import stitchbookReducer from './stitchbookSlice';
 
 const persistConfig = {
-  key: 'root_carpoint',
+  key: 'stitchbook_root',
   storage: AsyncStorage,
-  whitelist: ['billing', 'auth'],
+  whitelist: ['auth', 'stitchbook'], // Persist auth and cached data
 };
-
-
 
 const rootReducer = combineReducers({
   auth: authReducer,
-  billing: billingReducer,
+  stitchbook: stitchbookReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
-
 
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
+      serializableCheck: false,
     }),
 });
 
 export const persistor = persistStore(store);
-
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

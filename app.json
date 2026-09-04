@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Car Point",
-    "slug": "AutoMobile",
+    "name": "StitchBook",
+    "slug": "StitchBookApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/playstore-icon.jpg",
-    "scheme": "automobile",
+    "scheme": "StitchBook",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.netprincesingh.AutoMobile"
+      "bundleIdentifier": "com.netprincesingh.StitchBook"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.netprincesingh.AutoMobile"
+      "package": "com.netprincesingh.StitchBook"
     },
     "web": {
       "output": "static",

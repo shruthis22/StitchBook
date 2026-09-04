@@ -10,19 +10,18 @@ export default function LoginScreen() {
   const dispatch = useDispatch();
   const router = useRouter();
 
-  // REPLACE THIS WITH YOUR NEW DEPLOYED GOOGLE APPS SCRIPT URL
   const handleLogin = async () => {
     if (pin.length < 4) {
-      Alert.alert("Invalid Input", "PIN must be at least 4 digits");
+      Alert.alert("Invalid Input", "Password must be at least 4 characters");
       return;
     }
 
     setLoading(true);
 
     try {
-      // Bypassing the server-side PIN check to log in locally
-      dispatch(loginSuccess({ name: "Car Point Admin" }));
-      router.replace('/(drawer)/home');
+      // Basic mock login for MVP
+      dispatch(loginSuccess({ name: "Boutique Owner" }));
+      router.replace('/(drawer)/dashboard');
     } catch (error) {
       console.error(error);
       Alert.alert("Error", "An unexpected error occurred.");
@@ -33,22 +32,21 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-
       <Image
         source={require("../assets/company-logo.jpg")}
-        style={styles.logo}
+        style={styles.logoImage}
+        resizeMode="contain"
       />
-      <Text style={styles.header}>Enter Access PIN</Text>
+      <Text style={styles.logoText}>StitchBook</Text>
+      <Text style={styles.header}>Welcome Back</Text>
 
       <TextInput
         style={styles.pinInput}
         value={pin}
         onChangeText={setPin}
-        keyboardType="number-pad"
-        maxLength={6}
         secureTextEntry={true}
-        placeholder="••••••"
-        placeholderTextColor="#ccc"
+        placeholder="Enter Password"
+        placeholderTextColor="#999"
       />
 
       <TouchableOpacity
@@ -71,43 +69,51 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FAF9F6', // Off-white/cream for boutique feel
     padding: 20,
   },
-  logo: {
-    height: 100,
-    width: 100,
-    marginBottom: 20,
+  logoImage: {
+    width: 200,
+    height: 200,
+    marginBottom: -10,
+  },
+  logoText: {
+    fontSize: 42,
+    fontWeight: '300',
+    fontStyle: 'italic',
+    color: '#4A3B32', // Dark brownish
+    marginBottom: 10,
   },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    color: '#333',
+    fontSize: 16,
+    color: '#6B5B52',
+    marginBottom: 40,
+    letterSpacing: 1,
   },
   pinInput: {
     width: '80%',
     height: 60,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    fontSize: 30,
+    borderColor: '#E6E2DD',
+    borderRadius: 8,
+    fontSize: 20,
     textAlign: 'center',
-    letterSpacing: 10,
     marginBottom: 30,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff',
+    color: '#333',
   },
   loginButton: {
     width: '80%',
-    height: 50,
-    backgroundColor: '#007AFF', // Change this to your brand color
+    height: 55,
+    backgroundColor: '#4A3B32', // Premium boutique color
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 8,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 1,
   },
 });

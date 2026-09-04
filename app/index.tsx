@@ -18,7 +18,7 @@ export default function Index() {
   useEffect(() => {
     // Add a small delay or check immediately
     if (isAuthenticated) {
-      router.replace('/(drawer)/home');
+      router.replace('/(drawer)/dashboard');
     } else {
       router.replace('/Login');
     }
