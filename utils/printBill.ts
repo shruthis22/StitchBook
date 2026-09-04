@@ -4,109 +4,75 @@ import * as Print from 'expo-print';
 import { Alert } from 'react-native';
 import { Bill } from '../redux/billSlice';
 
-
-const numberToWords = (num: number): string => {
-    return `${num} (Only)`;
-};
-
-
-
 export const printBill = async (bill: Bill) => {
-
-
-    const products = bill.items.filter(item => item.type === 'product');
-    const labour = bill.items.filter(item => item.type === 'labour');
-
-    // Combine all items for pagination
-    const allItems = [...products, ...labour];
+    // Treat all items as products since there's no labour anymore
+    const allItems = bill.items || [];
 
     // Calculate items per page (leaving room for header, footer, etc.)
-    const ITEMS_PER_PAGE = 23;
-    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
+    const ITEMS_PER_PAGE = 20;
+    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE) || 1;
 
-    const logoAsset = Asset.fromModule(require('../assets/company-logo-transparent.png'));
-    await logoAsset.downloadAsync();
-
-    // Load God Image
-    const godAsset = Asset.fromModule(require('../assets/god-image.png'));
-    await godAsset.downloadAsync();
+    const logoAsset = Asset.fromModule(require('../assets/logo.png'));
+    const watermarkAsset = Asset.fromModule(require('../assets/watermark.png'));
+    await Promise.all([logoAsset.downloadAsync(), watermarkAsset.downloadAsync()]);
 
     let logoBase64 = "";
+    let watermarkBase64 = "";
 
-    if (logoAsset.localUri) {
-        try {
-            // Robust method: Copy to cache first to avoid access issues in production
-            const targetPath = FileSystem.cacheDirectory + 'logo_copy.png';
-            await FileSystem.copyAsync({
-                from: logoAsset.localUri,
-                to: targetPath
-            });
-
-            const base64 = await FileSystem.readAsStringAsync(targetPath, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
+    try {
+        if (logoAsset.localUri) {
+            // Read directly or create unique temp file
+            const tempLogoPath = FileSystem.cacheDirectory + 'temp_logo_' + Date.now() + '.png';
+            await FileSystem.copyAsync({ from: logoAsset.localUri, to: tempLogoPath });
+            const base64 = await FileSystem.readAsStringAsync(tempLogoPath, { encoding: FileSystem.EncodingType.Base64 });
             logoBase64 = `data:image/png;base64,${base64}`;
         }
-        catch (e: any) {
-            console.error("Failed to load logo", e);
-            Alert.alert("Logo Load Error", e.message || JSON.stringify(e));
-            logoBase64 = "https://cdn-icons-png.flaticon.com/512/741/741407.png";
+        if (watermarkAsset.localUri) {
+            const tempWatermarkPath = FileSystem.cacheDirectory + 'temp_watermark_' + Date.now() + '.png';
+            await FileSystem.copyAsync({ from: watermarkAsset.localUri, to: tempWatermarkPath });
+            const base64 = await FileSystem.readAsStringAsync(tempWatermarkPath, { encoding: FileSystem.EncodingType.Base64 });
+            watermarkBase64 = `data:image/png;base64,${base64}`;
         }
+    } catch (e: any) {
+        console.error("Failed to load images", e);
     }
 
-    let godBase64 = "";
-    if (godAsset.localUri) {
-        try {
-            const targetPath = FileSystem.cacheDirectory + 'god_copy.png';
-            await FileSystem.copyAsync({
-                from: godAsset.localUri,
-                to: targetPath
-            });
-
-            const base64 = await FileSystem.readAsStringAsync(targetPath, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
-            godBase64 = `data:image/png;base64,${base64}`;
-        } catch (e: any) {
-            console.error("Failed to load god image", e);
-            godBase64 = "";
-        }
-    }
-
-    // Generate header HTML (reusable for each page)
     const generateHeader = (pageNum: number, totalPages: number) => `
     <div class="header">
-        <div class="header-left">
-            <img src="${logoBase64}" class="logo">
-            <div style="margin-left: 20px; font-size: 14px; margin-right: 20px;">
-                <div class="company-name">No1 CAR POINT - Multi Car Works</div>
-                <div>Grace School Opposite, Kavindapadi Road,</div>
-                <div>Anna Nagar, Erode - 638 316.</div>
-                <div><strong>Mahesh: 99946 15538</strong></div>
-            </div>
-    
-        </div>
-
-        <div class="header-right">
-            <div>
-                <div class="info-row"><span class="info-label">Bill To:</span>${bill.customerName}</div>
-                <div class="info-row"><span class="info-label">Phone:</span>${bill.customerPhone}</div>
-                <div class="info-row"><span class="info-label">Bill No:</span>${bill.id}</div>
-                <div class="info-row"><span class="info-label">Date:</span>${bill.date}</div>
-                <div class="info-row"><span class="info-label">Vehicle:</span>${bill.vehicleName}</div>
-                <div class="info-row"><span class="info-label">Vehicle No:</span>${bill.vehicleNumber}</div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+            
+            <!-- LEFT: Company Details -->
+            <div style="width: 33%; font-size: 11px; line-height: 1.4; color: #164f79;">
+                <strong>Lic No : A/E/SC/TN/22/929 (E88325)</strong><br><br>
+                <strong>V.P. SENTHILKUMAR</strong><br>
+                1/154, Somanur Road,<br>63.Velampalayam, Palladam - 641 663<br>
+                &#9742; 99762 18700<br>
+                sscoexplosives2016@gmail.com
             </div>
             
-        </div>
-    </div>
+            <!-- CENTER: Logo & Name -->
+            <div style="width: 34%; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                <div class="rhombus-container" style="margin-bottom: 8px;">
+                    <img src="${logoBase64}" class="header-logo" />
+                </div>
+                <h1 class="company-name" style="font-size: 20px; text-shadow: 1px 1px 0px #fff, 1px 1px 2px rgba(0,0,0,0.2);">S.S. & CO EXPLOSIVES</h1>
+            </div>
 
-    <div class="km-strip">
-        <span>Current KM: ${bill.currentKm}</span>
-        <span>Next Service KM: ${bill.nextServiceKm}</span>
-        <span style="font-size: 10px; color: #666;">Page ${pageNum} of ${totalPages}</span>
+            <!-- RIGHT: Invoice & Customer -->
+            <div style="width: 33%; font-size: 12px; line-height: 1.4; color: #164f79; text-align: right;">
+                <div><strong>Invoice No:</strong> ${bill.id}</div>
+                <div><strong>Date:</strong> ${new Date(bill.date).toLocaleDateString('en-GB')}</div>
+                <div style="margin-top: 15px;">
+                    <strong style="font-size: 11px;">Billed To:</strong><br>
+                    <span style="font-size: 14px; font-weight: bold; color: #000;">${bill.customerName}</span><br>
+                    ${bill.customerPhone || ''}
+                </div>
+            </div>
+
+        </div>
+        <div class="divider" style="margin: 10px 0;"></div>
     </div>`;
 
-    // Generate pages
     const pages = [];
     for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
         const startIdx = pageIndex * ITEMS_PER_PAGE;
@@ -116,7 +82,7 @@ export const printBill = async (bill: Bill) => {
 
         const pageHTML = `
 <div class="page-container ${!isLastPage ? 'page-break' : ''}">
-    <img src="${logoBase64}" class="watermark-logo">
+    <img src="${watermarkBase64}" class="watermark-logo">
     ${generateHeader(pageIndex + 1, totalPages)}
 
     <div class="items-area">
@@ -128,39 +94,19 @@ export const printBill = async (bill: Bill) => {
             <div class="cell right">Amount</div>
         </div>
 
-        ${pageItems.map((item, i) => {
-            const isFirstLabour = item.type === 'labour' && (i === 0 || pageItems[i - 1].type !== 'labour');
-            const isFirstProduct = item.type === 'product' && (i === 0 || pageItems[i - 1].type !== 'product');
-
-            return `
-        ${isFirstLabour ? `
-        <div class="grid row section-header-row">
-            <div class="cell center"></div>
-            <div class="cell" style="font-weight: bold; font-size: 14px;">Labour Charges:</div>
-            <div class="cell center"></div>
-            <div class="cell right"></div>
-            <div class="cell right"></div>
-        </div>
-        ` : ''}
-        <div class="grid row ${item.type === 'labour' ? 'labour-row' : ''}">
+        ${pageItems.map((item, i) => `
+        <div class="grid row">
             <div class="cell center">${startIdx + i + 1}</div>
             <div class="cell">${item.name}</div>
             <div class="cell center">${item.qty}</div>
             <div class="cell right">${item.rate}</div>
             <div class="cell right">${item.amount}</div>
         </div>
-        `;
-        }).join('')}
+        `).join('')}
 
-        ${!isLastPage ? `
         <div class="filler">
             <div></div><div></div><div></div><div></div><div></div>
         </div>
-        ` : `
-        <div class="filler">
-            <div></div><div></div><div></div><div></div><div></div>
-        </div>
-        `}
     </div>
 
     ${isLastPage ? `
@@ -173,25 +119,22 @@ export const printBill = async (bill: Bill) => {
         <div class="totals">
             <div class="total-row grand">
                 <span>Total</span>
-                <span>${bill.subtotal.toFixed(2)}</span>
+                <span>${(bill.subtotal || 0).toFixed(2)}</span>
             </div>
-
             <div class="total-row">
                 <span>Advance Paid</span>
                 <span>${(bill.advancePayment || 0).toFixed(2)}</span>
             </div>
-
             <div class="total-row">
-                <span>Balance</span>
+                <span>Balance Due</span>
                 <span>${(bill.pendingAmount ?? Math.max(0, bill.grandTotal - (bill.advancePayment || 0))).toFixed(2)}</span>
             </div>
-
-            <div class="signature">
-                <div style="padding-top:30px;">
-                    Authorized Signature
-                </div>
-            </div>
         </div>
+    </div>
+    
+    <div class="footer-bottom">
+        <div class="footer-divider"></div>
+        Magazine Address : S.F. No : 6/1, Sukkampalayam Village, Palladam (Tk), Tirupur.
     </div>
     ` : ''}
 </div>`;
@@ -203,226 +146,138 @@ export const printBill = async (bill: Bill) => {
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-@page { margin: 30px 15px 1px 15px; }
+@page { margin: 20px 15px; }
 * { box-sizing: border-box; }
 
 body {
-    margin: 15px 15px 1px 15px;
+    margin: 0;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .page-container {
     border: 2px solid #000;
-    min-height: calc(95vh - 10px);
+    min-height: 90vh; /* Reduced to prevent overflow to a second page */
     display: flex;
     flex-direction: column;
     position: relative;
     z-index: 1;
+    padding: 15px;
+    box-sizing: border-box;
+    page-break-inside: avoid;
 }
 
 .watermark-logo {
     position: absolute;
-    top: 55%;
+    top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 60%;
-    opacity: 0.12;
+    opacity: 0.35;
     z-index: -1;
     pointer-events: none;
 }
 
-.page-break {
-    page-break-after: always;
+.page-break { page-break-after: always; }
+
+/* HEADER */
+.header { margin-bottom: 15px; }
+.top-row {
+    display: flex; justify-content: space-between;
+    font-size: 13px; font-weight: bold; color: #164f79;
+    margin-bottom: 10px;
 }
-
-/* ================= HEADER ================= */
-
-.header {
-    display: flex;
-    border-bottom: 2px solid #000;
+.title-row {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; gap: 20px;
 }
-
-.header-left {
-    width: 70%;
-    border-right: 2px solid #000;
-    padding: 10px;
-    display: flex;
-    gap: 20px;
-    align-items: center;
+.rhombus-container {
+    width: 65px;
+    height: 65px;
+    transform: rotate(45deg);
+    background-color: #000;
+    overflow: hidden;
     position: relative;
+    border-radius: 4px;
+    flex-shrink: 0;
 }
-
-.logo {
-    width: 155px;
-    height: auto;
-    object-fit: contain;
-    margin-right: -25px;
-    margin-left: -5px;
-}
-
-.company-name {
-    color: #2fd715;
-    font-weight: 900;
-    font-size: 18px;
-    white-space: nowrap;
-}
-
-.header-right {
-    width: 30%;
-    padding: 6px;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    font-size: 12px;
-}
-
-.info-row {
-    display: flex;
-    margin-bottom: 4px;
-}
-
-.info-label {
-    width: 80px;
-    font-weight: bold;
-}
-
-.god-img {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    border: 1px solid #aaa;
-    object-fit: cover;
+.header-logo { 
+    width: 95px; 
+    height: 95px;
+    transform: rotate(-45deg);
     position: absolute;
-    right: 10px;
-    top: 25px;
-    z-index: -1;
+    top: 50%;
+    left: 50%;
+    margin-top: -47.5px;
+    margin-left: -47.5px;
+    object-fit: cover;
+}
+.company-name {
+    color: #7b293b; font-family: 'Times New Roman', serif;
+    font-size: 32px; margin: 0;
+    text-shadow: 1px 1px 0px #fff, 2px 2px 2px rgba(0,0,0,0.3);
+}
+.company-address {
+    font-size: 14px; color: #164f79; margin-top: 5px;
+    font-weight: bold; text-align: center;
+}
+.divider {
+    border-top: 2px solid #7b293b; border-bottom: 1px solid #7b293b;
+    height: 2px; margin: 15px 0;
+}
+.info-container {
+    display: flex; justify-content: space-between;
+    font-size: 14px; margin-bottom: 10px; color: #164f79;
 }
 
-/* ================= KM STRIP ================= */
-
-.km-strip {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 10px;
-    border-bottom: 2px solid #000;
-    font-weight: bold;
-}
-
-/* ================= GRID AREA ================= */
-
-.items-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-/* COLUMN GRID */
-.grid {
-    display: grid;
-    grid-template-columns: 45px 1fr 70px 90px 110px;
-}
-
-/* HEADER ROW */
-.grid.header-row {
-    font-weight: bold;
-    border-bottom: 2px solid #000;
-}
-
-.cell {
-    padding: 6px;
-    border-right: 2px solid #000;
-}
-
-.cell:last-child {
-    border-right: none;
-}
-
+/* GRID AREA */
+.items-area { flex: 1; display: flex; flex-direction: column; }
+.grid { display: grid; grid-template-columns: 45px 1fr 70px 90px 110px; }
+.grid.header-row { font-weight: bold; border: 2px solid #000; background: #f2f2f2; }
+.cell { padding: 8px; border-right: 1px solid #000; border-bottom: 1px solid #000; }
+.cell:last-child { border-right: none; }
 .center { text-align: center; }
 .right  { text-align: right; padding-right: 8px; }
+.row { border-left: 2px solid #000; border-right: 2px solid #000; }
 
-/* ITEM ROWS */
-.row {
-    border-bottom: none;
-}
-
-.labour-row {
-    font-size: 14px;
-    font-weight: normal;
-}
-
-/* EMPTY FILLER (THIS IS THE KEY PART) */
 .filler {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 45px 1fr 70px 90px 110px;
+    flex: 1; display: grid; grid-template-columns: 45px 1fr 70px 90px 110px;
+    border-left: 2px solid #000; border-right: 2px solid #000; border-bottom: 2px solid #000;
 }
+.filler div { border-right: 1px solid #000; }
+.filler div:last-child { border-right: none; }
 
-.filler div {
-    border-right: 2px solid #000;
-}
-
-.filler div:last-child {
-    border-right: none;
-}
-
-/* ================= FOOTER ================= */
-
+/* FOOTER */
 .footer {
-    display: flex;
-    border-top: 2px solid #000;
-    min-height: 130px;
+    display: flex; min-height: 120px;
+    border: 2px solid #000; border-top: none;
+    margin-bottom: 10px;
 }
-
-.remarks {
-    flex: 1;
-    border-right: 2px solid #000;
-    padding: 8px;
-}
-
-.totals {
-    width: 40%;
-    display: flex;
-    flex-direction: column;
-}
-
+.remarks { flex: 1; border-right: 2px solid #000; padding: 10px; }
+.totals { width: 45%; display: flex; flex-direction: column; }
 .total-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 10px;
-    border-bottom: 1px solid #000;
-    font-weight: bold;
+    display: flex; justify-content: space-between;
+    padding: 8px 10px; border-bottom: 1px solid #000; font-weight: bold;
 }
-
-.total-row.grand {
-    background: #eee;
-    border-bottom: 2px solid #000;
+.total-row:last-child { border-bottom: none; }
+.total-row.grand { background: #eee; border-bottom: 2px solid #000; }
+.footer-bottom {
+    text-align: center; font-size: 13px; font-weight: bold; color: #164f79;
+    margin-top: 10px;
 }
-
-.signature {
-    flex: 1;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 10px;
-    font-style: italic;
+.footer-divider {
+    border-top: 2px solid #164f79; border-bottom: 1px solid #164f79;
+    height: 2px; margin-bottom: 8px;
 }
 </style>
 </head>
-
 <body>
 ${pages.join('\n')}
 </body>
-</html>
-`;
+</html>`;
 
     const { uri } = await Print.printToFileAsync({ html });
     console.log('File has been saved to:', uri);
-
-    await Print.printAsync({
-        html: html,
-        orientation: Print.Orientation.portrait,
-    });
+    await Print.printAsync({ html, orientation: Print.Orientation.portrait });
 };

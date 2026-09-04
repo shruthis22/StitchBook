@@ -115,7 +115,9 @@ export default function AddProductScreen() {
           <Ionicons name="menu" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add New Product</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('dashboard')}>
+          <Ionicons name="speedometer-outline" size={24} color="#1F2937" />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -140,8 +142,6 @@ export default function AddProductScreen() {
                 <Text style={styles.label}>Product Name</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="e.g., Engine Oil 5L"
-                  placeholderTextColor="#9CA3AF"
                   value={name}
                   onChangeText={setName}
                   editable={!isSaving}
@@ -259,8 +259,7 @@ const styles = StyleSheet.create({
   priceInput: {
     paddingLeft: 30
   },
-  saveButton: {
-    backgroundColor: '#3B82F6',
+  saveButton: { backgroundColor: '#1F2937',
     borderRadius: 8,
     padding: 16,
     flexDirection: 'row',

@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Car Point",
+    "name": "SS&CO Explosives",
     "slug": "AutoMobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/playstore-icon.jpg",
+    "icon": "./assets/images/icon.png",
     "scheme": "automobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -17,8 +17,8 @@
     ],
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/playstore-icon.jpg"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -33,12 +33,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/playstore-icon.jpg",
-          "imageWidth": 200,
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 400,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FFFFFF",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#FFFFFF"
           }
         }
       ],
@@ -56,6 +56,11 @@
         "projectId": "24416603-a5a8-4655-831b-befc562b337c"
       }
     },
-    "owner": "shru_thi_22"
+    "owner": "shru_thi_22",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    }
   }
 }

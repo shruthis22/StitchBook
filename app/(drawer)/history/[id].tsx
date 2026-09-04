@@ -39,6 +39,7 @@ export default function BillDetailsScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Online'>('Cash');
   const [isSavingPayment, setIsSavingPayment] = useState(false);
 
   const handleAddPayment = async () => {
@@ -63,7 +64,8 @@ export default function BillDetailsScreen() {
 
     const newHistoryEntry = {
       date: new Date().toISOString(),
-      amount: newPayment
+      amount: newPayment,
+      method: paymentMethod
     };
     
     const newHistory = [...(bill.paymentHistory || []), newHistoryEntry];
@@ -83,6 +85,7 @@ export default function BillDetailsScreen() {
       ).unwrap();
       setShowPaymentModal(false);
       setPaymentAmount('');
+      setPaymentMethod('Cash');
     } catch (error: any) {
       Alert.alert('Update Failed', error.message || 'Could not update payment.');
     } finally {
@@ -181,7 +184,17 @@ export default function BillDetailsScreen() {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
-    });
+    
+  methodBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
+  },
+  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
+  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  methodBtnTextActive: { color: '#FFF' },
+
+});
   };
 
 
@@ -223,41 +236,16 @@ export default function BillDetailsScreen() {
               <Text style={styles.infoText}>{bill.customerPhone || 'N/A'}</Text>
             </View>
 
-            {/* UPDATED: Vehicle Name + Number */}
-            <View style={styles.infoRow}>
-              <View style={styles.iconBox}><Ionicons name="car" size={16} color="#3B82F6" /></View>
-              <View>
-                <Text style={styles.infoText}>
-                  {bill.vehicleName ? `${bill.vehicleName} - ` : ''}{bill.vehicleNumber}
-                </Text>
-              </View>
-            </View>
+
           </View>
 
-          {/* NEW: Service Details Card (KM & Remarks) */}
-          {(bill.currentKm || bill.nextServiceKm || bill.remarks) && (
+          {/* Remarks Card */}
+          {bill.remarks ? (
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Service Details</Text>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View>
-                  <Text style={styles.labelMeta}>Current KM</Text>
-                  <Text style={styles.valueMeta}>{bill.currentKm || 'N/A'}</Text>
-                </View>
-                <View>
-                  <Text style={styles.labelMeta}>Next Service KM</Text>
-                  <Text style={styles.valueMeta}>{bill.nextServiceKm || 'N/A'}</Text>
-                </View>
-              </View>
-
-              {bill.remarks ? (
-                <View style={{ marginTop: 8, padding: 10, backgroundColor: '#F9FAFB', borderRadius: 8 }}>
-                  <Text style={[styles.labelMeta, { marginBottom: 4 }]}>Remarks:</Text>
-                  <Text style={{ color: '#374151', fontStyle: 'italic' }}>{bill.remarks}</Text>
-                </View>
-              ) : null}
+              <Text style={styles.sectionTitle}>Remarks</Text>
+              <Text style={styles.valueMeta}>{bill.remarks}</Text>
             </View>
-          )}
+          ) : null}
 
           {/* Items Table */}
           <View style={styles.card}>
@@ -335,7 +323,7 @@ export default function BillDetailsScreen() {
           {/* Add Payment Button */}
           {((bill.pendingAmount ?? 0) > 0) && (
             <TouchableOpacity 
-              style={[styles.fillButton, { marginBottom: 16, backgroundColor: '#059669' }]} 
+              style={[styles.fillButton, { marginBottom: 16, backgroundColor: '#1F2937' }]} 
               onPress={() => setShowPaymentModal(true)}
             >
               <Ionicons name="add-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
@@ -395,12 +383,32 @@ export default function BillDetailsScreen() {
                 autoFocus
               />
 
+              <Text style={styles.labelMeta}>Payment Method</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                <TouchableOpacity
+                  style={[styles.methodBtn, paymentMethod === 'Cash' && styles.methodBtnActive]}
+                  onPress={() => setPaymentMethod('Cash')}
+                >
+                  <Ionicons name="cash-outline" size={18} color={paymentMethod === 'Cash' ? '#FFF' : '#6B7280'} />
+                  <Text style={[styles.methodBtnText, paymentMethod === 'Cash' && styles.methodBtnTextActive]}>Cash</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.methodBtn, paymentMethod === 'Online' && styles.methodBtnActive]}
+                  onPress={() => setPaymentMethod('Online')}
+                >
+                  <Ionicons name="card-outline" size={18} color={paymentMethod === 'Online' ? '#FFF' : '#6B7280'} />
+                  <Text style={[styles.methodBtnText, paymentMethod === 'Online' && styles.methodBtnTextActive]}>Online</Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.cancelButton}
                   onPress={() => {
                     setShowPaymentModal(false);
                     setPaymentAmount('');
+      setPaymentMethod('Cash');
                   }}
                   disabled={isSavingPayment}
                 >
@@ -610,4 +618,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: { fontSize: 15, fontWeight: '600', color: '#FFF' },
+
+  methodBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
+  },
+  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
+  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  methodBtnTextActive: { color: '#FFF' },
+
 });

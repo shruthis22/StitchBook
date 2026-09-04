@@ -35,7 +35,7 @@ export default function LoginScreen() {
     <View style={styles.container}>
 
       <Image
-        source={require("../assets/company-logo.jpg")}
+        source={require("../assets/logo.png")}
         style={styles.logo}
       />
       <Text style={styles.header}>Enter Access PIN</Text>
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#000000',
     padding: 20,
   },
   logo: {
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 30,
-    color: '#333',
+    color: '#FFFFFF',
   },
   pinInput: {
     width: '80%',
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   loginButton: {
     width: '80%',
     height: 50,
-    backgroundColor: '#007AFF', // Change this to your brand color
+    backgroundColor: '#B78165', // Change this to your brand color
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,

@@ -43,6 +43,7 @@ export default function PendingPaymentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Online'>('Cash');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function PendingPaymentsScreen() {
         const q = search.toLowerCase();
         return (
           String(bill.customerName || '').toLowerCase().includes(q) ||
-          String(bill.vehicleNumber || '').toLowerCase().includes(q) ||
+          
           String(bill.id || '').toLowerCase().includes(q)
         );
       })
@@ -112,7 +113,8 @@ export default function PendingPaymentsScreen() {
 
     const newHistoryEntry = {
       date: new Date().toISOString(),
-      amount: newPayment
+      amount: newPayment,
+      method: paymentMethod
     };
     
     const newHistory = [...(editingBill.paymentHistory || []), newHistoryEntry];
@@ -132,6 +134,7 @@ export default function PendingPaymentsScreen() {
       ).unwrap();
       setEditingBill(null);
       setPaymentAmount('');
+      setPaymentMethod('Cash');
     } catch (error: any) {
       Alert.alert('Update Failed', error.message || 'Could not update payment.');
     } finally {
@@ -153,16 +156,14 @@ export default function PendingPaymentsScreen() {
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
             <Text style={styles.customerName}>{item.customerName}</Text>
-            <Text style={styles.vehicleInfo}>{item.vehicleNumber || 'N/A'}</Text>
+            
           </View>
-          <Text style={styles.pendingAmount}>₹{getCalculatedPendingAmount(item).toFixed(2)}</Text>
+          <Text style={styles.pendingAmount}>₹{(Number(getCalculatedPendingAmount(item)) || 0).toFixed(2)}</Text>
         </View>
 
-        <View style={styles.divider} />
-
-        <View style={styles.row}>
-          <Text style={styles.invoiceInfo}>
-            Invoice {item.id} • {formatDate(item.date)} • Bill ₹{item.grandTotal.toFixed(2)}
+        <View style={styles.cardBody}>
+          <Text style={styles.details}>
+            Invoice {item.id} • {formatDate(item.date)} • Bill ₹{(Number(item.grandTotal) || Number(item.amount) || 0).toFixed(2)}
           </Text>
         </View>
       </TouchableOpacity>
@@ -183,7 +184,9 @@ export default function PendingPaymentsScreen() {
             <Ionicons name="menu" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Pending Payments</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity onPress={() => navigation.navigate('dashboard')}>
+            <Ionicons name="speedometer-outline" size={24} color="#1F2937" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.filterContainer}>
@@ -191,7 +194,7 @@ export default function PendingPaymentsScreen() {
             <Ionicons name="search" size={20} color="#9CA3AF" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search customer, vehicle..."
+              placeholder="Search customer, ID..."
               placeholderTextColor="#9CA3AF"
               value={search}
               onChangeText={setSearch}
@@ -260,6 +263,24 @@ export default function PendingPaymentsScreen() {
               placeholder="Enter amount received"
               autoFocus
             />
+
+            <Text style={[styles.label, { marginTop: 14 }]}>Payment Method</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 4 }}>
+              <TouchableOpacity
+                style={[styles.methodBtn, paymentMethod === 'Cash' && styles.methodBtnActive]}
+                onPress={() => setPaymentMethod('Cash')}
+              >
+                <Ionicons name="cash-outline" size={16} color={paymentMethod === 'Cash' ? '#FFF' : '#6B7280'} />
+                <Text style={[styles.methodBtnText, paymentMethod === 'Cash' && styles.methodBtnTextActive]}>Cash</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.methodBtn, paymentMethod === 'Online' && styles.methodBtnActive]}
+                onPress={() => setPaymentMethod('Online')}
+              >
+                <Ionicons name="card-outline" size={16} color={paymentMethod === 'Online' ? '#FFF' : '#6B7280'} />
+                <Text style={[styles.methodBtnText, paymentMethod === 'Online' && styles.methodBtnTextActive]}>Online</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -392,8 +413,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#1F2937',
     alignItems: 'center',
   },
   saveButtonText: { fontSize: 15, fontWeight: '600', color: '#FFF' },
+  methodBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
+  },
+  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
+  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  methodBtnTextActive: { color: '#FFF' },
 });

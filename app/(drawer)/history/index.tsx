@@ -171,11 +171,11 @@ export default function BillingHistoryScreen() {
         <View style={styles.row}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.customerName} numberOfLines={1}>{item.customerName}</Text>
-            <Text style={styles.vehicleInfo}>{item.vehicleNumber}</Text>
+            
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.amount}>₹{item.amount.toFixed(2)}</Text>
-            <TouchableOpacity
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.amount}>₹{(Number(item.grandTotal) || Number(item.amount) || 0).toFixed(2)}</Text>
+              <TouchableOpacity
               style={{ marginLeft: 10, padding: 4 }}
               onPress={() => handleDelete(item.id)}
             >
@@ -210,7 +210,9 @@ export default function BillingHistoryScreen() {
             <Ionicons name="menu" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Billing History</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity onPress={() => navigation.navigate('dashboard')}>
+            <Ionicons name="speedometer-outline" size={24} color="#1F2937" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.filterContainer}>

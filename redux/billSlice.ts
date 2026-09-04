@@ -4,7 +4,7 @@ import { RootState } from './store';
 
 
 // REPLACE THIS WITH YOUR NEW DEPLOYED GOOGLE APPS SCRIPT URL
-const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyl1eF7NiOand9pZNI7Sd7OFkp6I-F_bVFarhpReQou52d8vFEAfUUa2I9wZMYpbOd1/exec";
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxKQsFDGbo-UhmbLkI5UV5MVHmQgApc7rUAHrpI6xjuU3WzjpSIJL6O9suSimN8CzDl3w/exec";
 
 
 // --- Interfaces ---
@@ -15,6 +15,23 @@ export interface BillItem {
   rate: number;
   amount: number;
   type: 'product' | 'labour';
+}
+
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+}
+
+
+export interface StockLedger {
+  id: string;
+  date: string;
+  type: 'IN' | 'OUT';
+  qty: number;
+  remarks: string;
+  referenceId?: string; // e.g. Bill ID
 }
 
 export interface Product {
@@ -43,10 +60,13 @@ export interface Bill {
   advancePayment?: number;
   nextServiceDate?: string;
   pendingAmount?: number;
-  paymentHistory?: { date: string; amount: number }[];
+  paymentHistory?: { date: string; amount: number; method?: 'Cash' | 'Online' }[];
 }
 
 export interface BillingState {
+  customers: Customer[];
+  stockLedger: StockLedger[];
+
   products: Product[];
   bills: Bill[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
@@ -54,6 +74,9 @@ export interface BillingState {
 }
 
 const initialState: BillingState = {
+  customers: [],
+  stockLedger: [],
+
   products: [],
   bills: [],
   status: 'idle',
@@ -171,7 +194,7 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
           parsedItems = [];
         }
 
-        let parsedHistory: { date: string; amount: number }[] = [];
+        let parsedHistory: { date: string; amount: number; method?: 'Cash' | 'Online' }[] = [];
         try {
           if (typeof b.paymentHistory === 'string') {
             parsedHistory = JSON.parse(b.paymentHistory);
@@ -321,6 +344,104 @@ export const updateBillInGoogleSheets = createAsyncThunk(
   }
 );
 
+
+// --- CUSTOMER THUNKS ---
+export const fetchCustomersFromGoogleSheets = createAsyncThunk(
+  'billing/fetchCustomers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await safeFetch(`${GOOGLE_SHEET_API_URL}?type=customers`);
+      if (data.status === 'error') throw new Error(data.message);
+      if (!Array.isArray(data)) return [];
+
+      return data.map((c: any) => ({
+        id: String(c.id),
+        name: String(c.name),
+        phone: String(c.phone || '')
+      })) as Customer[];
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const saveCustomerToGoogleSheets = createAsyncThunk(
+  'billing/saveCustomer',
+  async (newCustomer: Customer, { rejectWithValue }) => {
+    try {
+      const payload = { ...newCustomer, _sheetType: 'customers' };
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+      if (result.status === 'error') throw new Error(result.message);
+      return newCustomer;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const deleteCustomerFromGoogleSheets = createAsyncThunk(
+  'billing/deleteCustomer',
+  async (customerId: string, { rejectWithValue }) => {
+    try {
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: 'delete', type: 'customers', id: customerId }),
+      });
+      if (result.status === 'error') throw new Error(result.message);
+      return customerId;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+
+// --- STOCK LEDGER THUNKS ---
+export const fetchStockLedgerFromGoogleSheets = createAsyncThunk(
+  'billing/fetchStockLedger',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await safeFetch(`${GOOGLE_SHEET_API_URL}?type=inventory_ledger`);
+      if (data.status === 'error') throw new Error(data.message);
+      if (!Array.isArray(data)) return [];
+
+      return data.map((s: any) => ({
+        id: String(s.id),
+        date: String(s.date),
+        type: s.type === 'IN' || s.type === 'OUT' ? s.type : 'IN',
+        qty: Number(s.qty) || 0,
+        remarks: String(s.remarks || ''),
+        referenceId: s.referenceId ? String(s.referenceId) : ''
+      })) as StockLedger[];
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const saveStockEntryToGoogleSheets = createAsyncThunk(
+  'billing/saveStockEntry',
+  async (newEntry: StockLedger, { rejectWithValue }) => {
+    try {
+      const payload = { ...newEntry, _sheetType: 'inventory_ledger' };
+      const result = await safeFetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+      if (result.status === 'error') throw new Error(result.message);
+      return newEntry;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 // The Slice
 const billingSlice = createSlice({
 
@@ -332,6 +453,28 @@ const billingSlice = createSlice({
   extraReducers: (builder) => {
 
     builder
+      
+      // Stock Ledger
+      .addCase(fetchStockLedgerFromGoogleSheets.fulfilled, (state, action) => {
+        state.stockLedger = action.payload;
+      })
+      .addCase(saveStockEntryToGoogleSheets.fulfilled, (state, action) => {
+        if (!state.stockLedger) state.stockLedger = [];
+          state.stockLedger.push(action.payload);
+      })
+
+      // Customers
+      .addCase(fetchCustomersFromGoogleSheets.fulfilled, (state, action) => {
+        state.customers = action.payload;
+      })
+      .addCase(saveCustomerToGoogleSheets.fulfilled, (state, action) => {
+        if (!state.customers) state.customers = [];
+          state.customers.push(action.payload);
+      })
+      .addCase(deleteCustomerFromGoogleSheets.fulfilled, (state, action) => {
+        state.customers = state.customers.filter(c => c.id !== action.payload);
+      })
+
       // Products
       .addCase(fetchProductsFromGoogleSheets.fulfilled, (state, action) => {
         state.products = action.payload;

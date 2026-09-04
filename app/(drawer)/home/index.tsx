@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bill, fetchProductsFromGoogleSheets, Product, saveBillToGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
+import { Bill, fetchProductsFromGoogleSheets, Product, fetchCustomersFromGoogleSheets, Customer, saveBillToGoogleSheets, saveStockEntryToGoogleSheets } from "../../../redux/billSlice"; // UPDATED IMPORT
 import { AppDispatch, RootState } from '../../../redux/store'; // Added AppDispatch for async thunks
 import { printBill } from '../../../utils/printBill';
 
@@ -33,14 +33,36 @@ export default function BillingScreen() {
   const dispatch = useDispatch<AppDispatch>();
 
   const availableProducts = useSelector((state: RootState) => state.billing.products);
+  const customers = useSelector((state: RootState) => state.billing.customers);
+
+  const handleSearchCustomer = (text: string) => {
+    setCustomerName(text);
+    if (text.length > 0) {
+      const filtered = (customers || []).filter(c => c.name.toLowerCase().includes(text.toLowerCase()));
+      setFilteredCustomers(filtered);
+      setShowCustomerDropdown(true);
+    } else {
+      setShowCustomerDropdown(false);
+    }
+  };
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setCustomerName(customer.name);
+    if (customer.phone) setPhone(customer.phone);
+    setShowCustomerDropdown(false);
+    Keyboard.dismiss();
+  };
+
 
   useEffect(() => {
     // Only fetch if we don't have products yet (optimization)
     if (availableProducts.length === 0) {
       dispatch(fetchProductsFromGoogleSheets());
+    dispatch(fetchCustomersFromGoogleSheets());
     }
   }, [dispatch]);
 
+  const [billDate, setBillDate] = useState(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
   const [productName, setProductName] = useState("");
   const [qty, setQty] = useState('1');
   const [rate, setRate] = useState('');
@@ -58,11 +80,15 @@ export default function BillingScreen() {
   const [currentKm, setCurrentKm] = useState("");
   const [nextServiceKm, setNextServiceKm] = useState("");
   const [advancePayment, setAdvancePayment] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Online'>('Cash');
   const [pendingAmount, setPendingAmount] = useState("");
   const [nextServiceDate, setNextServiceDate] = useState<Date | null>(null);
   const [showServiceDatePicker, setShowServiceDatePicker] = useState(false);
 
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
   // New Loading State
@@ -181,7 +207,7 @@ export default function BillingScreen() {
       vehicleNumber: vehicle || 'N/A',
       vehicleName: vehicleName || '',
       customerPhone: phone,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      date: billDate,
       status: (pendingAmount && parseFloat(pendingAmount) > 0) ? 'Pending' : 'Paid',
       amount: grandTotal,
       subtotal,
@@ -201,13 +227,26 @@ export default function BillingScreen() {
         const adv = advancePayment ? parseFloat(advancePayment) : 0;
         const pen = pendingAmount ? parseFloat(pendingAmount) : 0;
         const initialPayment = adv > 0 ? adv : (pen === 0 ? grandTotal : 0);
-        return initialPayment > 0 ? [{ date: new Date().toISOString(), amount: initialPayment }] : [];
+        return initialPayment > 0 ? [{ date: new Date().toISOString(), amount: initialPayment, method: paymentMethod }] : [];
       })()
     };
 
     try {
       // 1. Save to Google Sheets
       await dispatch(saveBillToGoogleSheets(newBill)).unwrap();
+      
+      const totalBoxesBilled = cartItems.filter(item => item.type === 'product').reduce((sum, item) => sum + Number(item.qty), 0);
+      if (totalBoxesBilled > 0) {
+        await dispatch(saveStockEntryToGoogleSheets({
+          id: Date.now().toString() + '_stock',
+          date: new Date().toISOString(),
+          type: 'OUT',
+          qty: totalBoxesBilled,
+          remarks: `Billed to ${newBill.customerName || 'Unknown'}`,
+          referenceId: newBill.id
+        })).unwrap().catch(e => console.warn('Stock deduct failed:', e));
+      }
+
       
       // STOP LOADING IMMEDIATELY! (Fixes the print dialog freeze)
       setIsSaving(false);
@@ -225,6 +264,7 @@ export default function BillingScreen() {
       setNextServiceKm('');
       setVehicleName('');
       setAdvancePayment('');
+      setPaymentMethod('Cash');
       setPendingAmount('');
       setNextServiceDate(null);
       setProductName("");
@@ -256,9 +296,9 @@ export default function BillingScreen() {
             </TouchableOpacity>
             <Text style={styles.cardTitle}>Billing Home</Text>
             <TouchableOpacity
-              onPress={() => router.push('/(drawer)/history')}
+              onPress={() => router.push('/(drawer)/dashboard')}
             >
-              <Ionicons name="time-outline" size={24} color="#333" />
+              <Ionicons name="speedometer-outline" size={24} color="#333" />
             </TouchableOpacity>
           </View>
         </View>
@@ -339,9 +379,10 @@ export default function BillingScreen() {
               <View style={styles.column}>
                 <Text style={styles.label}>Rate (₹)</Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: '#E5E7EB', color: '#6B7280' }]}
+                  style={styles.input}
                   value={rate}
-                  editable={false}
+                  onChangeText={setRate}
+                  editable={true}
                   keyboardType="numeric"
                   placeholder="0.00"
                 />
@@ -368,38 +409,7 @@ export default function BillingScreen() {
 
 
 
-          {/* Labour Charges */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Labour Charges</Text>
-            <View style={styles.row}>
-              <View style={[styles.column, { marginRight: 10 }]}>
-                <Text style={styles.label}>Labour/Service Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Oil Change"
-                  placeholderTextColor="#999"
-                  value={labourName}
-                  onChangeText={setLabourName}
-                />
-              </View>
-              <View style={styles.column}>
-                <Text style={styles.label}>Cost (₹)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0.00"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  value={labourCost}
-                  onChangeText={setLabourCost}
-                />
-              </View>
-            </View>
 
-            <TouchableOpacity style={styles.addButtonSecondary} onPress={handleAddLabour}>
-              <Ionicons name="add" size={20} color="#3B82F6" style={{ marginRight: 5 }} />
-              <Text style={styles.addButtonTextSecondary}>Add Labour</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Bill Items */}
           <View style={styles.card}>
@@ -438,15 +448,54 @@ export default function BillingScreen() {
             <Text style={styles.sectionTitle}>Customer Information</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Customer Name</Text>
+              <Text style={styles.label}>Bill Date</Text>
               <TextInput
-                style={styles.input}
-                placeholder="Enter customer name"
-                placeholderTextColor="#999"
-                value={customerName}
-                onChangeText={setCustomerName}
+                style={[styles.input, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+                value={billDate}
+                editable={false}
+                placeholder="e.g., 4 Sep 2026"
               />
             </View>
+
+            
+            <View style={styles.autocompleteContainer}>
+              <Text style={styles.label}>Customer / Party Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Type customer name..."
+                placeholderTextColor="#999"
+                value={customerName}
+                onChangeText={handleSearchCustomer}
+                onFocus={() => {
+                  if (customerName) setShowCustomerDropdown(true);
+                }}
+                onSubmitEditing={() => setShowCustomerDropdown(false)}
+              />
+
+              {showCustomerDropdown && (
+                <View style={[styles.dropdownList, { maxHeight: 150 }]}>
+                  <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                    {filteredCustomers.length === 0 ? (
+                      <View style={styles.noResult}>
+                        <Text style={{ color: '#999' }}>New party. Will be added automatically or just billed.</Text>
+                      </View>
+                    ) : (
+                      filteredCustomers.map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={styles.dropdownItem}
+                          onPress={() => handleSelectCustomer(item)}
+                        >
+                          <Text style={styles.dropdownItemName}>{item.name}</Text>
+                          <Text style={styles.dropdownItemPrice}>{item.phone || 'No phone'}</Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Phone Number <Text style={styles.optionalLabel}>(Optional)</Text></Text>
@@ -459,109 +508,47 @@ export default function BillingScreen() {
                 onChangeText={setPhone}
               />
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Vehicle Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Honda City"
-                placeholderTextColor="#999"
-                value={vehicleName}
-                onChangeText={setVehicleName}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Vehicle Number <Text style={styles.optionalLabel}>(Optional)</Text></Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter vehicle number"
-                placeholderTextColor="#999"
-                value={vehicle}
-                onChangeText={setVehicle}
-              />
-            </View>
           </View>
 
-          {/* Service Details & Remarks */}
+          {/* Remarks */}
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Service Details</Text>
-            <View style={styles.row}>
-              <View style={[styles.column, { marginRight: 10 }]}>
-                <Text style={styles.label}>Current KM</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 12500"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  value={currentKm}
-                  onChangeText={setCurrentKm}
-                />
-              </View>
-
-              <View style={styles.column}>
-                <Text style={styles.label}>Next Service KM</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 15000"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  value={nextServiceKm}
-                  onChangeText={setNextServiceKm}
-                />
-              </View>
-            </View>
-
+            <Text style={styles.sectionTitle}>Remarks</Text>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Remarks / Notes</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="Any specific notes for this bill..."
-                placeholderTextColor="#999"
-                multiline={true}
+                placeholder='Add any additional notes here...'
+                placeholderTextColor='#999'
+                multiline
                 numberOfLines={3}
-                textAlignVertical="top"
+                textAlignVertical='top'
                 value={remarks}
                 onChangeText={setRemarks}
               />
             </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Next Service Reminder <Text style={styles.optionalLabel}>(Optional)</Text></Text>
-              <TouchableOpacity
-                style={styles.datePickerButton}
-                onPress={() => setShowServiceDatePicker(true)}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#3B82F6" />
-                <Text style={styles.datePickerText}>
-                  {nextServiceDate
-                    ? nextServiceDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : 'Set next service date'}
-                </Text>
-                {nextServiceDate && (
-                  <TouchableOpacity onPress={() => setNextServiceDate(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                  </TouchableOpacity>
-                )}
-              </TouchableOpacity>
-              {showServiceDatePicker && (
-                <DateTimePicker
-                  value={nextServiceDate || new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  minimumDate={new Date()}
-                  onChange={(_event, selectedDate) => {
-                    if (Platform.OS === 'android') setShowServiceDatePicker(false);
-                    if (selectedDate) setNextServiceDate(selectedDate);
-                  }}
-                />
-              )}
-            </View>
           </View>
-
+          
           {/* Advance Payment */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Payment Details</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Payment Method</Text>
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={[styles.methodBtn, paymentMethod === 'Cash' && styles.methodBtnActive]}
+                  onPress={() => setPaymentMethod('Cash')}
+                >
+                  <Ionicons name="cash-outline" size={18} color={paymentMethod === 'Cash' ? '#FFF' : '#6B7280'} />
+                  <Text style={[styles.methodBtnText, paymentMethod === 'Cash' && styles.methodBtnTextActive]}>Cash</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.methodBtn, paymentMethod === 'Online' && styles.methodBtnActive]}
+                  onPress={() => setPaymentMethod('Online')}
+                >
+                  <Ionicons name="card-outline" size={18} color={paymentMethod === 'Online' ? '#FFF' : '#6B7280'} />
+                  <Text style={[styles.methodBtnText, paymentMethod === 'Online' && styles.methodBtnTextActive]}>Online</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Advance Payment (₹)</Text>
               <TextInput
@@ -672,6 +659,30 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 6,
   },
+  methodBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
+  },
+  methodBtnActive: {
+    backgroundColor: '#1F2937',
+    borderColor: '#1F2937',
+  },
+  methodBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  methodBtnTextActive: {
+    color: '#FFF',
+  },
   optionalLabel: {
     fontWeight: '400',
     color: '#9CA3AF',
@@ -740,7 +751,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   addButtonPrimary: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#1F2937',
     borderRadius: 8,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -822,8 +833,7 @@ const styles = StyleSheet.create({
   footerContainer: {
     marginTop: 4,
   },
-  printButton: {
-    backgroundColor: '#3B82F6',
+  printButton: { backgroundColor: '#1F2937',
     borderRadius: 8,
     paddingVertical: 14,
     flexDirection: 'row',
