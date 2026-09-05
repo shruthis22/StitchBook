@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView
 } from 'react-native';
@@ -6,13 +6,58 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { AppDispatch } from '../../../redux/store';
+import { saveBillToGoogleSheets } from '../../../redux/billSlice';
+import { TextInput, Modal, ActivityIndicator, Alert, ToastAndroid } from 'react-native';
 import { RootState } from '../../../redux/store';
 import { Bill } from '../../../redux/billSlice';
 
 export default function PartyDetailScreen() {
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
   const router = useRouter();
+
+  const dispatch = useDispatch<AppDispatch>();
+  const [showModal, setShowModal] = useState(false);
+  const [oldBalance, setOldBalance] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveOldBalance = async () => {
+    const numAmt = parseFloat(oldBalance);
+    if (!oldBalance || isNaN(numAmt) || numAmt <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid amount.");
+      return;
+    }
+
+    setIsSaving(true);
+    const dummyBill = {
+      id: `#OLD-${Math.floor(100000 + Math.random() * 900000)}`,
+      customerName: name as string,
+      customerPhone: "",
+      date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+      status: "Pending",
+      amount: numAmt,
+      subtotal: numAmt,
+      tax: 0,
+      discount: 0,
+      grandTotal: numAmt,
+      items: [],
+      remarks: "Old Balance",
+      paymentHistory: [],
+      pendingAmount: numAmt
+    };
+
+    try {
+      await dispatch(saveBillToGoogleSheets(dummyBill as any)).unwrap();
+      ToastAndroid.show("Old balance added", ToastAndroid.SHORT);
+      setShowModal(false);
+      setOldBalance("");
+    } catch (error: any) {
+      Alert.alert("Error", "Failed to add old balance: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const { bills } = useSelector((state: RootState) => state.billing);
 
@@ -161,4 +206,47 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 12, fontWeight: '700' },
   empty: { alignItems: 'center', marginTop: 60, gap: 10 },
   emptyText: { fontSize: 14, color: '#9CA3AF' },
+
+  oldBalanceBtn: {
+    backgroundColor: "#1F2937",
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  oldBalanceBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400
+  },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827", marginBottom: 4 },
+  modalSubtitle: { fontSize: 14, color: "#6B7280", marginBottom: 20 },
+  modalInput: {
+    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 8,
+    paddingHorizontal: 16, paddingVertical: 12, fontSize: 16,
+    marginBottom: 24, color: "#111827"
+  },
+  modalButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 12 },
+  modalBtnCancel: { paddingVertical: 10, paddingHorizontal: 16 },
+  modalBtnCancelText: { color: "#4B5563", fontSize: 15, fontWeight: "600" },
+  modalBtnSave: { backgroundColor: "#1F2937", paddingVertical: 10, paddingHorizontal: 24, borderRadius: 8 },
+  modalBtnSaveText: { color: "#FFF", fontSize: 15, fontWeight: "600" }
 });
