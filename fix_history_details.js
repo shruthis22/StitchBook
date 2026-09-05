@@ -1,15 +1,25 @@
-const fs = require('fs');
-const path = 'app/(drawer)/history/[id].tsx';
-let code = fs.readFileSync(path, 'utf8');
+const fs = require("fs");
+let content = fs.readFileSync("app/(drawer)/history/[id].tsx", "utf-8");
 
-const regex = /<Text style=\{styles\.itemMeta\}>Qty: \{item\.qty\} x (.*?)<\/Text>/;
-code = code.replace(regex, `<Text style={styles.itemMeta}>{item.qty} {products?.find(p => p.name === item.name)?.unit === 'Nos' ? 'Nos' : 'Boxes'} x $1</Text>`);
+// 1. Update useSelector to get customers
+content = content.replace(
+  "const bill = useSelector((state: RootState) =>\\n    state.billing.bills.find(b => b.id === billId)\\n  );",
+  `const { bills, customers } = useSelector((state: RootState) => state.billing);
+  const bill = bills.find(b => b.id === billId);
+  const customer = customers?.find(c => c.name?.trim().toLowerCase() === bill?.customerName?.trim().toLowerCase());
+  const displayPhone = bill?.customerPhone || customer?.phone || "N/A";`
+);
 
-// wait, products might not be destructured in history/[id].tsx!
-// let's check if products is defined in the component.
-if (!code.includes('const { bills, products }')) {
-    code = code.replace('const { bills } = useSelector', 'const { bills, products } = useSelector');
-}
+// 2. Update rendering of customer info to fix overflow and use displayPhone
+content = content.replace(
+  /<Text style=\{styles\.infoText\}>\{bill\.customerName\}<\/Text>/,
+  "<Text style={[styles.infoText, { flex: 1, flexWrap: \"wrap\" }]}>{bill.customerName}</Text>"
+);
 
-fs.writeFileSync(path, code, 'utf8');
-console.log('Fixed history details UI');
+content = content.replace(
+  /<Text style=\{styles\.infoText\}>\{bill\.customerPhone \|\| \x27N\/A\x27\}<\/Text>/,
+  "<Text style={styles.infoText}>{displayPhone}</Text>"
+);
+
+fs.writeFileSync("app/(drawer)/history/[id].tsx", content);
+

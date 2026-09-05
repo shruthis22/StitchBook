@@ -30,9 +30,12 @@ export default function BillDetailsScreen() {
   // Normalize ID (Ensure it's a string to prevent crashes)
   const billId = Array.isArray(id) ? id[0] : id;
 
-  const bill = useSelector((state: RootState) =>
-    state.billing.bills.find(b => b.id === billId)
+  const { bills, customers } = useSelector((state: RootState) => state.billing);
+  const bill = bills.find(b => b.id === billId);
+  const matchedCustomer = (customers || []).find(
+    c => c.name?.trim().toLowerCase() === bill?.customerName?.trim().toLowerCase()
   );
+  const displayPhone = bill?.customerPhone || matchedCustomer?.phone || '';
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -218,12 +221,12 @@ export default function BillDetailsScreen() {
 
             <View style={styles.infoRow}>
               <View style={styles.iconBox}><Ionicons name="person" size={16} color="#3B82F6" /></View>
-              <Text style={styles.infoText}>{bill.customerName}</Text>
+              <Text style={[styles.infoText, { flex: 1, flexWrap: "wrap" }]}>{bill.customerName}</Text>
             </View>
 
             <View style={styles.infoRow}>
               <View style={styles.iconBox}><Ionicons name="call" size={16} color="#3B82F6" /></View>
-              <Text style={styles.infoText}>{bill.customerPhone || 'N/A'}</Text>
+              <Text style={styles.infoText}>{displayPhone}</Text>
             </View>
 
 
@@ -475,8 +478,8 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   iconBox: {
     width: 32,
