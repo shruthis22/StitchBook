@@ -46,28 +46,30 @@ export default function PartiesScreen() {
         onPress={() => router.push({ pathname: '/(drawer)/parties/[id]', params: { id: item.id, name: item.name } })}
         activeOpacity={0.7}
       >
-        <View style={styles.cardLeft}>
+        {/* Top Row: Avatar & Due Badge */}
+        <View style={styles.cardTopRow}>
           <View style={styles.avatar}>
             <Ionicons name="business-outline" size={20} color="#1F2937" />
           </View>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={styles.partyName} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.partyPhone}>{item.phone || 'No phone'}</Text>
-            <Text style={styles.billCount}>{stats.billCount} bill{stats.billCount !== 1 ? 's' : ''}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {stats.totalPending > 0 ? (
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>₹{stats.totalPending.toFixed(0)} due</Text>
+              </View>
+            ) : stats.billCount > 0 ? (
+              <View style={styles.paidBadge}>
+                <Text style={styles.paidBadgeText}>Cleared</Text>
+              </View>
+            ) : null}
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </View>
         </View>
-        <View style={styles.cardRight}>
-          {stats.totalPending > 0 ? (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>₹{stats.totalPending.toFixed(0)} due</Text>
-            </View>
-          ) : stats.billCount > 0 ? (
-            <View style={styles.paidBadge}>
-              <Text style={styles.paidBadgeText}>Cleared</Text>
-            </View>
-          ) : null}
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" style={{ marginTop: 8 }} />
-        </View>
+
+        {/* Next Line: Name */}
+        <Text style={styles.partyName}>{item.name}</Text>
+        
+        {/* Next Line: Phone */}
+        <Text style={styles.partyPhone}>{item.phone || 'No phone'}</Text>
       </TouchableOpacity>
     );
   };
@@ -128,21 +130,20 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   card: {
-    backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 10,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12,
     borderWidth: 1, borderColor: '#E5E7EB',
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  cardTopRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
+  },
   avatar: {
-    width: 44, height: 44, borderRadius: 10, backgroundColor: '#F3F4F6',
+    width: 40, height: 40, borderRadius: 10, backgroundColor: '#F3F4F6',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: '#E5E7EB',
   },
-  partyName: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  partyPhone: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  billCount: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  cardRight: { alignItems: 'flex-end' },
+  partyName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  partyPhone: { fontSize: 14, color: '#6B7280' },
   pendingBadge: {
     backgroundColor: '#FEF2F2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4,
     borderWidth: 1, borderColor: '#FCA5A5',

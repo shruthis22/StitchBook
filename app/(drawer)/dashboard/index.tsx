@@ -97,7 +97,7 @@ export default function DashboardScreen() {
             <TouchableOpacity style={[styles.statCard, { borderTopColor: '#1F2937', borderTopWidth: 3 }]} onPress={() => router.push('/(drawer)/parties')} activeOpacity={0.8}>
               <Text style={styles.statLabel}>Total Parties</Text>
               <Text style={styles.statValue}>{uniqueParties}</Text>
-              <Text style={styles.statHint}>Tap to view directory →</Text>
+              <Text style={styles.statHint}>Tap to view parties →</Text>
             </TouchableOpacity>
 
             <View style={[styles.statCard, { borderTopColor: '#1F2937', borderTopWidth: 3 }]}>
