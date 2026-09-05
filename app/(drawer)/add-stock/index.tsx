@@ -12,6 +12,7 @@ import { StockLedger, fetchStockLedgerFromGoogleSheets, saveStockEntryToGoogleSh
 export default function AddStockScreen() {
   const [qty, setQty] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [unit, setUnit] = useState<'Box' | 'Nos'>('Box');
   const [isSaving, setIsSaving] = useState(false);
 
   const { stockLedger, status } = useSelector((state: RootState) => state.billing);
@@ -39,6 +40,7 @@ export default function AddStockScreen() {
       type: 'IN',
       qty: numQty,
       remarks: remarks || 'Manual Stock Addition',
+      unit,
     };
 
     try {
@@ -53,9 +55,8 @@ export default function AddStockScreen() {
     }
   };
 
-  const currentStock = (stockLedger || []).reduce((acc, curr) => {
-    return curr.type === 'IN' ? acc + curr.qty : acc - curr.qty;
-  }, 0);
+  const currentStockBoxes = (stockLedger || []).filter(s => s.unit !== 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
+  const currentStockNos = (stockLedger || []).filter(s => s.unit === 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
 
   const renderItem = ({ item }: { item: StockLedger }) => (
     <View style={styles.listItem}>
@@ -106,10 +107,17 @@ export default function AddStockScreen() {
         }
         ListHeaderComponent={
           <View>
-            <View style={styles.stockOverviewCard}>
-               <Text style={styles.overviewLabel}>Total Boxes in Stock</Text>
-               <Text style={styles.overviewValue}>{currentStock}</Text>
-            </View>
+            <View style={[styles.stockOverviewCard, { flexDirection: 'row', padding: 0, marginBottom: 16 }]}>
+                <View style={{ flex: 1, alignItems: 'center', paddingVertical: 22 }}>
+                  <Text style={styles.overviewLabel}>Total Boxes</Text>
+                  <Text style={[styles.overviewValue, { marginTop: 6 }]}>{currentStockBoxes}</Text>
+                </View>
+                <View style={{ width: 1.5, backgroundColor: '#4B5563', marginVertical: 16 }} />
+                <View style={{ flex: 1, alignItems: 'center', paddingVertical: 22 }}>
+                  <Text style={styles.overviewLabel}>Total Nos</Text>
+                  <Text style={[styles.overviewValue, { marginTop: 6 }]}>{currentStockNos}</Text>
+                </View>
+              </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionHeader}>Add New Stock (Boxes)</Text>
@@ -124,6 +132,28 @@ export default function AddStockScreen() {
                   editable={!isSaving}
                 />
               </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Stock Unit</Text>
+                  
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.methodBtn, unit === 'Box' && styles.methodBtnActive]}
+                    onPress={() => setUnit('Box')}
+                  >
+                    <Ionicons name="cube-outline" size={18} color={unit === 'Box' ? '#FFF' : '#6B7280'} />
+                    <Text style={[styles.methodBtnText, unit === 'Box' && styles.methodBtnTextActive]}>Box</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.methodBtn, unit === 'Nos' && styles.methodBtnActive]}
+                    onPress={() => setUnit('Nos')}
+                  >
+                    <Ionicons name="apps-outline" size={18} color={unit === 'Nos' ? '#FFF' : '#6B7280'} />
+                    <Text style={[styles.methodBtnText, unit === 'Nos' && styles.methodBtnTextActive]}>Nos</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Remarks (Optional)</Text>
@@ -182,5 +212,14 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 15, fontWeight: '600', color: '#1F2937', },
   itemDate: { fontSize: 13, color: '#6B7280', marginTop: 2 },
   itemQty: { fontSize: 18, fontWeight: '700' },
-  emptyText: { textAlign: 'center', color: '#9CA3AF', marginTop: 30, fontSize: 14, }
+  emptyText: { textAlign: 'center', color: '#9CA3AF', marginTop: 30, fontSize: 14, },
+
+  methodBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
+  },
+  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
+  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  methodBtnTextActive: { color: '#FFF' },
 });

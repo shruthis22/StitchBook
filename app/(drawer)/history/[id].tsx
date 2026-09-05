@@ -184,17 +184,7 @@ export default function BillDetailsScreen() {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
-    
-  methodBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 10, borderRadius: 8,
-    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
-  },
-  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
-  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-  methodBtnTextActive: { color: '#FFF' },
-
-});
+    });
   };
 
 
@@ -251,18 +241,18 @@ export default function BillDetailsScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Item Details</Text>
             <View style={styles.tableHeader}>
-              <Text style={[styles.th, { flex: 2 }]}>Item</Text>
-              <Text style={[styles.th, { flex: 0.5, textAlign: 'center' }]}>Qty</Text>
+              <Text style={[styles.th, { flex: 1.7 }]}>Item</Text>
+              <Text style={[styles.th, { flex: 0.8, textAlign: 'center' }]}>Qty / Unit</Text>
               <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Rate</Text>
               <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Amount</Text>
             </View>
 
             {bill.items.map((item, index) => (
               <View key={index} style={styles.tableRow}>
-                <Text style={[styles.td, { flex: 2 }]}>{item.name}</Text>
-                <Text style={[styles.td, { flex: 0.5, textAlign: 'center' }]}>{item.qty}</Text>
-                <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{item.rate.toFixed(2)}</Text>
-                <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{item.amount.toFixed(2)}</Text>
+                <Text style={[styles.td, { flex: 1.7 }]}>{item.name}</Text>
+                <Text style={[styles.td, { flex: 0.8, textAlign: 'center' }]}>{item.qty}{item.type === 'product' ? ' ' + ((item as any).unit === 'Nos' ? 'Nos' : 'Box') : ''}</Text>
+                <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{item.rate.toLocaleString('en-IN')}</Text>
+                <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>{item.amount.toLocaleString('en-IN')}</Text>
               </View>
             ))}
 
@@ -271,19 +261,19 @@ export default function BillDetailsScreen() {
             {/* Totals */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>₹{bill.subtotal.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>₹{bill.subtotal.toLocaleString('en-IN')}</Text>
             </View>
             {/* Only show Tax/Discount if they exist */}
             {bill.tax > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Tax</Text>
-                <Text style={styles.totalValue}>₹{bill.tax.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>₹{bill.tax.toLocaleString('en-IN')}</Text>
               </View>
             )}
             {bill.discount > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Discount</Text>
-                <Text style={styles.totalValue}>-₹{bill.discount.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>-₹{bill.discount.toLocaleString('en-IN')}</Text>
               </View>
             )}
 
@@ -291,14 +281,13 @@ export default function BillDetailsScreen() {
             {(bill.advancePayment || 0) > 0 && (
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Advance Paid</Text>
-                <Text style={[styles.totalValue, { color: '#3B82F6' }]}>-₹{(bill.advancePayment || 0).toFixed(2)}</Text>
+                <Text style={[styles.totalValue, { color: '#3B82F6' }]}>-₹{(bill.advancePayment || 0).toLocaleString('en-IN')}</Text>
               </View>
             )}
 
             <View style={[styles.totalRow, { marginTop: 8 }]}>
               <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalValue}>₹{(bill.grandTotal || 0)
-              }</Text>
+              <Text style={styles.grandTotalValue}>₹{Number(bill.grandTotal || 0).toLocaleString('en-IN')}</Text>
             </View>
           </View>
 
@@ -310,7 +299,7 @@ export default function BillDetailsScreen() {
                 <View key={index} style={styles.infoRow}>
                   <View style={styles.iconBox}><Ionicons name="cash" size={16} color="#059669" /></View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoText}>Paid ₹{payment.amount.toFixed(2)}</Text>
+                    <Text style={styles.infoText}>Paid ₹{payment.amount.toLocaleString('en-IN')}</Text>
                     <Text style={{ fontSize: 12, color: '#6B7280' }}>
                       {new Date(payment.date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
                     </Text>
@@ -370,7 +359,7 @@ export default function BillDetailsScreen() {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Add Payment</Text>
               <Text style={styles.modalSubtitle}>
-                Pending: ₹{bill.pendingAmount}
+                Pending: ₹{Number(bill.pendingAmount || 0).toLocaleString('en-IN')}
               </Text>
 
               <Text style={styles.labelMeta}>Payment Amount (₹)</Text>

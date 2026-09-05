@@ -58,8 +58,8 @@ export default function DashboardScreen() {
   };
   const totalPending = bills.reduce((sum, b) => sum + getCalculatedPendingAmount(b), 0);
 
-  const totalStocks = (stockLedger || []).reduce((acc, curr) =>
-    curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
+  const totalStocksBoxes = (stockLedger || []).filter(s => s.unit !== 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
+  const totalStocksNos = (stockLedger || []).filter(s => s.unit === 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
 
   const periodLabel = period === 'today' ? 'Today' : period === 'week' ? 'This Week' : 'This Month';
 
@@ -80,7 +80,6 @@ export default function DashboardScreen() {
           <Ionicons name="menu" size={22} color="#1F2937" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.greeting}>{greeting()}</Text>
           <Text style={styles.headerTitle}>SS&CO Explosives</Text>
         </View>
       </View>
@@ -89,44 +88,32 @@ export default function DashboardScreen() {
 
         {/* 4 Stat Cards */}
         <View style={styles.statsGrid}>
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(drawer)/pending-payments')} activeOpacity={0.8}>
-            <View style={[styles.iconBadge, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="alert-circle-outline" size={18} color="#DC2626" />
-            </View>
-            <Text style={styles.statValue}>₹{totalPending.toFixed(0)}</Text>
-            <Text style={styles.statLabel}>Total Pending</Text>
-            <Text style={styles.statHint}>Tap to view →</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={[styles.statCard, { borderTopColor: '#1F2937', borderTopWidth: 3 }]} onPress={() => router.push('/(drawer)/pending-payments')} activeOpacity={0.8}>
+              <Text style={styles.statLabel}>Total Pending</Text>
+              <Text style={styles.statValue}>₹{totalPending.toLocaleString('en-IN')}</Text>
+              <Text style={styles.statHint}>Tap to view details →</Text>
+            </TouchableOpacity>
+  
+            <TouchableOpacity style={[styles.statCard, { borderTopColor: '#1F2937', borderTopWidth: 3 }]} onPress={() => router.push('/(drawer)/parties')} activeOpacity={0.8}>
+              <Text style={styles.statLabel}>Total Parties</Text>
+              <Text style={styles.statValue}>{uniqueParties}</Text>
+              <Text style={styles.statHint}>Tap to view directory →</Text>
+            </TouchableOpacity>
 
-          <View style={styles.statCard}>
-            <View style={[styles.iconBadge, { backgroundColor: '#E0E7FF' }]}>
-              <Ionicons name="document-text-outline" size={18} color="#4F46E5" />
+            <View style={[styles.statCard, { borderTopColor: '#1F2937', borderTopWidth: 3 }]}>
+              <Text style={styles.statLabel}>Box Stock</Text>
+              <Text style={styles.statValue}>{totalStocksBoxes.toLocaleString('en-IN')}</Text>
+              <Text style={styles.statHint}>Boxes available</Text>
             </View>
-            <Text style={styles.statValue}>{billsToday}</Text>
-            <Text style={styles.statLabel}>Bills Today</Text>
-            <Text style={styles.statHint}>Invoices raised</Text>
+
+            <View style={[styles.statCard, { borderTopColor: '#1F2937', borderTopWidth: 3 }]}>
+              <Text style={styles.statLabel}>Nos Stock</Text>
+              <Text style={styles.statValue}>{totalStocksNos.toLocaleString('en-IN')}</Text>
+              <Text style={styles.statHint}>Numbers available</Text>
+            </View>
           </View>
-
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/(drawer)/parties')} activeOpacity={0.8}>
-            <View style={[styles.iconBadge, { backgroundColor: '#D1FAE5' }]}>
-              <Ionicons name="people-outline" size={18} color="#059669" />
-            </View>
-            <Text style={styles.statValue}>{uniqueParties}</Text>
-            <Text style={styles.statLabel}>Total Parties</Text>
-            <Text style={styles.statHint}>Tap to view →</Text>
-          </TouchableOpacity>
-
-          <View style={styles.statCard}>
-            <View style={[styles.iconBadge, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="cube-outline" size={18} color="#D97706" />
-            </View>
-            <Text style={styles.statValue}>{totalStocks}</Text>
-            <Text style={styles.statLabel}>Stock in Hand</Text>
-            <Text style={styles.statHint}>Boxes available</Text>
-          </View>
-        </View>
-
-        {/* Collection Summary */}
+  
+          {/* Collection Summary */}
         <View style={styles.collectionSection}>
           <Text style={styles.sectionTitle}>Collection Summary</Text>
 
@@ -148,7 +135,7 @@ export default function DashboardScreen() {
           {/* Total Banner */}
           <View style={styles.totalBanner}>
             <Text style={styles.totalBannerLabel}>Total Collected · {periodLabel}</Text>
-            <Text style={styles.totalBannerValue}>₹{totalCollected.toFixed(0)}</Text>
+            <Text style={styles.totalBannerValue}>₹{totalCollected.toLocaleString('en-IN')}</Text>
           </View>
 
           {/* Cash / Online */}
@@ -160,7 +147,7 @@ export default function DashboardScreen() {
                 </View>
                 <Text style={styles.breakdownMethod}>Cash</Text>
               </View>
-              <Text style={styles.breakdownAmount}>₹{cashTotal.toFixed(0)}</Text>
+              <Text style={styles.breakdownAmount}>₹{cashTotal.toLocaleString('en-IN')}</Text>
             </View>
             <View style={styles.breakdownDivider} />
             <View style={styles.breakdownCard}>
@@ -170,7 +157,7 @@ export default function DashboardScreen() {
                 </View>
                 <Text style={styles.breakdownMethod}>Online</Text>
               </View>
-              <Text style={styles.breakdownAmount}>₹{onlineTotal.toFixed(0)}</Text>
+              <Text style={styles.breakdownAmount}>₹{onlineTotal.toLocaleString('en-IN')}</Text>
             </View>
           </View>
         </View>
@@ -198,56 +185,48 @@ const styles = StyleSheet.create({
 
   body: { flex: 1, padding: 14, gap: 12 },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard: {
-    flex: 1, minWidth: '45%',
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  statCard: { width: '48%', backgroundColor: '#FFFFFF', borderRadius: 12, padding: 22,
+      borderWidth: 1, borderColor: '#EAECF0',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
+      justifyContent: 'center',
+    },
+    statValue: { fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 4 },
+    statLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    statHint: { fontSize: 10, color: '#9CA3AF', fontWeight: '500' },
+
+  collectionSection: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20,
     borderWidth: 1, borderColor: '#EAECF0',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
   },
-  iconBadge: {
-    width: 34, height: 34, borderRadius: 9,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 10,
-  },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 2 },
-  statLabel: { fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 3 },
-  statHint: { fontSize: 10, color: '#9CA3AF' },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 14 },
 
-  collectionSection: {
-    flex: 1,
-    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#EAECF0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
-  },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 12 },
-
-  periodRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  periodRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   periodBtn: {
-    flex: 1, paddingVertical: 7, borderRadius: 8,
+    flex: 1, paddingVertical: 10, borderRadius: 10,
     alignItems: 'center', borderWidth: 1.5,
     borderColor: '#E5E7EB', backgroundColor: '#F9FAFB',
   },
   periodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
-  periodBtnText: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+  periodBtnText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
   periodBtnTextActive: { color: '#FFFFFF' },
 
   totalBanner: {
-    backgroundColor: '#1F2937', borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12,
+    backgroundColor: '#1F2937', borderRadius: 14,
+    paddingHorizontal: 20, paddingVertical: 22, marginBottom: 16,
   },
-  totalBannerLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '500', marginBottom: 2 },
-  totalBannerValue: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+  totalBannerLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '500', marginBottom: 6 },
+  totalBannerValue: { fontSize: 36, fontWeight: '800', color: '#FFFFFF' },
 
-  breakdownRow: {
-    flex: 1, flexDirection: 'row',
-    backgroundColor: '#F9FAFB', borderRadius: 12,
+  breakdownRow: { flex: 1, flexDirection: 'row',
+    backgroundColor: '#F9FAFB', borderRadius: 14,
     borderWidth: 1, borderColor: '#EAECF0', overflow: 'hidden',
   },
-  breakdownCard: { flex: 1, padding: 12 },
-  breakdownIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  breakdownMethod: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  breakdownAmount: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  breakdownDivider: { width: 1, backgroundColor: '#EAECF0' },
+  breakdownCard: { flex: 1, padding: 20, alignItems: 'center', justifyContent: 'center' },
+  breakdownIconRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  breakdownMethod: { fontSize: 13, fontWeight: '600', color: '#6B7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  breakdownAmount: { fontSize: 26, fontWeight: '800', color: '#111827' },
+  breakdownDivider: { width: 1, backgroundColor: '#E5E7EB' },
 });

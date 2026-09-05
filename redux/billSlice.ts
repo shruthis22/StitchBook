@@ -15,6 +15,7 @@ export interface BillItem {
   rate: number;
   amount: number;
   type: 'product' | 'labour';
+  unit?: 'Box' | 'Nos';
 }
 
 
@@ -32,12 +33,14 @@ export interface StockLedger {
   qty: number;
   remarks: string;
   referenceId?: string; // e.g. Bill ID
+  unit?: 'Box' | 'Nos';
 }
 
 export interface Product {
   id: string;
   name: string;
   price: string;
+  unit?: 'Box' | 'Nos';
 }
 
 export interface Bill {
@@ -140,8 +143,9 @@ export const fetchProductsFromGoogleSheets = createAsyncThunk(
       return data.map((p: any) => ({
         id: String(p.id),
         name: String(p.name),
-        price: String(p.price)
-      })) as Product[];
+        price: String(p.price),
+          unit: p.unit === 'Nos' ? 'Nos' : 'Box'
+        })) as Product[];
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -416,8 +420,9 @@ export const fetchStockLedgerFromGoogleSheets = createAsyncThunk(
         type: s.type === 'IN' || s.type === 'OUT' ? s.type : 'IN',
         qty: Number(s.qty) || 0,
         remarks: String(s.remarks || ''),
-        referenceId: s.referenceId ? String(s.referenceId) : ''
-      })) as StockLedger[];
+        referenceId: s.referenceId ? String(s.referenceId) : '',
+          unit: s.unit === 'Nos' ? 'Nos' : 'Box'
+        })) as StockLedger[];
     } catch (error: any) {
       return rejectWithValue(error.message);
     }

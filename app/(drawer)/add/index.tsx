@@ -23,6 +23,7 @@ export default function AddProductScreen() {
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [unit, setUnit] = useState<'Box' | 'Nos'>('Box');
   const [isSaving, setIsSaving] = useState(false); // Loading state
 
   const { products, status } = useSelector((state: RootState) => state.billing)
@@ -42,7 +43,8 @@ export default function AddProductScreen() {
     const newProduct = {
       id: Date.now().toString(),
       name,
-      price
+      price,
+      unit
     };
 
     try {
@@ -92,7 +94,7 @@ export default function AddProductScreen() {
           <Ionicons name="cube-outline" size={20} color="#3B82F6" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.itemName}>{item.name}</Text>
+          <Text style={styles.itemName}>{item.name} <Text style={{fontSize:12, color:'#9CA3AF', fontWeight:'500'}}>({item.unit === 'Nos' ? 'Nos' : 'Box'})</Text></Text>
         </View>
         <Text style={styles.itemPrice}>₹{item.price}</Text>
       </View>
@@ -160,11 +162,32 @@ export default function AddProductScreen() {
                     value={price}
                     onChangeText={setPrice}
                     editable={!isSaving}
-                  />
+                    />
+                  </View>
+                </View>
+  
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Selling Unit</Text>
+                  
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.methodBtn, unit === 'Box' && styles.methodBtnActive]}
+                    onPress={() => setUnit('Box')}
+                  >
+                    <Ionicons name="cube-outline" size={18} color={unit === 'Box' ? '#FFF' : '#6B7280'} />
+                    <Text style={[styles.methodBtnText, unit === 'Box' && styles.methodBtnTextActive]}>Box</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.methodBtn, unit === 'Nos' && styles.methodBtnActive]}
+                    onPress={() => setUnit('Nos')}
+                  >
+                    <Ionicons name="apps-outline" size={18} color={unit === 'Nos' ? '#FFF' : '#6B7280'} />
+                    <Text style={[styles.methodBtnText, unit === 'Nos' && styles.methodBtnTextActive]}>Nos</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Save Button inside the card for better flow */}
+                {/* Save Button inside the card for better flow */}
               <TouchableOpacity
                 style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
                 onPress={handleSave}
@@ -316,5 +339,14 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 30,
     fontSize: 14,
-  }
+  },
+
+  methodBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
+  },
+  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
+  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  methodBtnTextActive: { color: '#FFF' },
 });

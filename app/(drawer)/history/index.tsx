@@ -174,7 +174,7 @@ export default function BillingHistoryScreen() {
             
           </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.amount}>₹{(Number(item.grandTotal) || Number(item.amount) || 0).toFixed(2)}</Text>
+              <Text style={styles.amount}>₹{(Number(item.grandTotal) || Number(item.amount) || 0).toLocaleString('en-IN')}</Text>
               <TouchableOpacity
               style={{ marginLeft: 10, padding: 4 }}
               onPress={() => handleDelete(item.id)}

@@ -158,18 +158,29 @@ export default function PendingPaymentsScreen() {
             <Text style={styles.customerName}>{item.customerName}</Text>
             
           </View>
-          <Text style={styles.pendingAmount}>₹{(Number(getCalculatedPendingAmount(item)) || 0).toFixed(2)}</Text>
+          <Text style={styles.pendingAmount}>₹{(Number(getCalculatedPendingAmount(item)) || 0).toLocaleString('en-IN')}</Text>
         </View>
 
-        <View style={styles.cardBody}>
-          <Text style={styles.details}>
-            Invoice {item.id} • {formatDate(item.date)} • Bill ₹{(Number(item.grandTotal) || Number(item.amount) || 0).toFixed(2)}
-          </Text>
+                <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+            <Text style={{ fontSize: 13, color: '#6B7280' }}>
+              {formatDate(item.date)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="receipt-outline" size={14} color="#6B7280" />
+            <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '600' }}>
+              Bill: ₹{(Number(item.grandTotal) || Number(item.amount) || 0).toLocaleString('en-IN')}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
 
+      <View style={{ height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 }} />
+
       <TouchableOpacity style={styles.updateButton} onPress={() => openEditModal(item)}>
-        <Ionicons name="add-circle-outline" size={16} color="#3B82F6" />
+        <Ionicons name="add-circle-outline" size={16} color="#FFF" />
         <Text style={styles.updateButtonText}>Add Payment</Text>
       </TouchableOpacity>
     </View>
@@ -204,7 +215,7 @@ export default function PendingPaymentsScreen() {
           {pendingBills.length > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>{pendingBills.length} pending bill(s)</Text>
-              <Text style={styles.summaryTotal}>Total: ₹{totalPending.toFixed(2)}</Text>
+              <Text style={styles.summaryTotal}>Total: ₹{totalPending.toLocaleString('en-IN')}</Text>
             </View>
           )}
 
@@ -250,7 +261,7 @@ export default function PendingPaymentsScreen() {
             {editingBill && (
               <Text style={styles.modalSubtitle}>
                 {editingBill.customerName} — {editingBill.id}
-                {'\n'}Pending: ₹{getCalculatedPendingAmount(editingBill).toFixed(2)}
+                {'\n'}Pending: ₹{getCalculatedPendingAmount(editingBill).toLocaleString('en-IN')}
               </Text>
             )}
 
@@ -367,13 +378,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
     paddingVertical: 10,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#1F2937',
     borderRadius: 8,
     gap: 6,
   },
-  updateButtonText: { fontSize: 14, fontWeight: '600', color: '#3B82F6' },
+  updateButtonText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

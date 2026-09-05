@@ -34,6 +34,7 @@ export default function BillingScreen() {
 
   const availableProducts = useSelector((state: RootState) => state.billing.products);
   const customers = useSelector((state: RootState) => state.billing.customers);
+  const stockLedger = useSelector((state: RootState) => state.billing.stockLedger);
 
   const handleSearchCustomer = (text: string) => {
     setCustomerName(text);
@@ -198,6 +199,20 @@ export default function BillingScreen() {
       return;
     }
 
+    // --- STOCK VALIDATION ---
+    const requiredBoxes = cartItems.filter(item => item.type === 'product' && (item as any).unit !== 'Nos').reduce((sum, item) => sum + Number(item.qty), 0);
+    const requiredNos = cartItems.filter(item => item.type === 'product' && (item as any).unit === 'Nos').reduce((sum, item) => sum + Number(item.qty), 0);
+    const availableBoxes = (stockLedger || []).filter(s => s.unit !== 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
+    const availableNos = (stockLedger || []).filter(s => s.unit === 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
+    if (requiredBoxes > availableBoxes) {
+      Alert.alert('Insufficient Stock', `You are billing ${requiredBoxes} Boxes but only ${availableBoxes} available.`);
+      return;
+    }
+    if (requiredNos > availableNos) {
+      Alert.alert('Insufficient Stock', `You are billing ${requiredNos} Nos but only ${availableNos} available.`);
+      return;
+    }
+
     // Start Loading
     setIsSaving(true);
 
@@ -234,18 +249,19 @@ export default function BillingScreen() {
     try {
       // 1. Save to Google Sheets
       await dispatch(saveBillToGoogleSheets(newBill)).unwrap();
-      
-      const totalBoxesBilled = cartItems.filter(item => item.type === 'product').reduce((sum, item) => sum + Number(item.qty), 0);
+
+      // 2. Deduct stock by unit type
+      const totalBoxesBilled = requiredBoxes;
+      const totalNosBilled = requiredNos;
       if (totalBoxesBilled > 0) {
-        await dispatch(saveStockEntryToGoogleSheets({
-          id: Date.now().toString() + '_stock',
-          date: new Date().toISOString(),
-          type: 'OUT',
-          qty: totalBoxesBilled,
-          remarks: `Billed to ${newBill.customerName || 'Unknown'}`,
-          referenceId: newBill.id
-        })).unwrap().catch(e => console.warn('Stock deduct failed:', e));
+        dispatch(saveStockEntryToGoogleSheets({ id: Date.now().toString() + '_box', date: new Date().toISOString(), type: 'OUT', qty: totalBoxesBilled, remarks: `Billed to ${newBill.customerName} (Boxes)`, referenceId: newBill.id, unit: 'Box' })).unwrap().catch(e => console.warn('Stock deduct failed:', e));
       }
+      if (totalNosBilled > 0) {
+        setTimeout(() => {
+          dispatch(saveStockEntryToGoogleSheets({ id: Date.now().toString() + '_nos', date: new Date().toISOString(), type: 'OUT', qty: totalNosBilled, remarks: `Billed to ${newBill.customerName} (Nos)`, referenceId: newBill.id, unit: 'Nos' })).unwrap().catch(e => console.warn('Stock deduct failed:', e));
+        }, 60);
+      }
+
 
       
       // STOP LOADING IMMEDIATELY! (Fixes the print dialog freeze)
