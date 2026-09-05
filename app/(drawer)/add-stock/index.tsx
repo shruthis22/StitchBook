@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ToastAndroid, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
-import { DrawerActions } from '@react-navigation/native';
-import { useNavigation } from 'expo-router';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../redux/store';
-import { StockLedger, fetchStockLedgerFromGoogleSheets, saveStockEntryToGoogleSheets } from '../../../redux/billSlice';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ToastAndroid, FlatList, RefreshControl, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import { DrawerActions } from "@react-navigation/native";
+import { useNavigation } from "expo-router";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../../redux/store";
+import { StockLedger, fetchStockLedgerFromGoogleSheets, saveStockEntryToGoogleSheets, fetchProductsFromGoogleSheets, Product } from "../../../redux/billSlice";
 
 export default function AddStockScreen() {
-  const [qty, setQty] = useState('');
-  const [remarks, setRemarks] = useState('');
-  const [unit, setUnit] = useState<'Box' | 'Nos'>('Box');
+  const [qty, setQty] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { stockLedger, status } = useSelector((state: RootState) => state.billing);
+  const { stockLedger, products, status } = useSelector((state: RootState) => state.billing);
   const isLoadingList = status === "loading";
 
   const dispatch = useDispatch<AppDispatch>();
@@ -23,137 +23,135 @@ export default function AddStockScreen() {
 
   useEffect(() => {
     dispatch(fetchStockLedgerFromGoogleSheets());
+    if (products.length === 0) dispatch(fetchProductsFromGoogleSheets());
   }, [dispatch]);
 
   const handleSave = async () => {
     const numQty = parseInt(qty);
     if (!qty || isNaN(numQty) || numQty <= 0) {
-      Alert.alert('Error', 'Please enter a valid quantity');
+      Alert.alert("Error", "Please enter a valid quantity");
       return;
     }
+    
+    if (!selectedProductId) {
+      Alert.alert("Error", "Please select a product");
+      return;
+    }
+
+    const selectedProduct = products.find(p => p.id === selectedProductId);
+    if (!selectedProduct) return;
 
     setIsSaving(true);
 
     const newEntry: StockLedger = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
-      type: 'IN',
+      type: "IN",
       qty: numQty,
-      remarks: remarks || 'Manual Stock Addition',
-      unit,
+      remarks: remarks || "Manual Stock Addition",
+      unit: selectedProduct.unit || "Box",
+      productId: selectedProduct.id,
+      productName: selectedProduct.name
     };
 
     try {
       await dispatch(saveStockEntryToGoogleSheets(newEntry)).unwrap();
-      ToastAndroid.show('Stock Added', ToastAndroid.SHORT);
-      setQty('');
-      setRemarks('');
+      ToastAndroid.show("Stock Added", ToastAndroid.SHORT);
+      setQty("");
+      setRemarks("");
+      setSelectedProductId(null);
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to add stock: ' + error.message);
+      Alert.alert("Error", "Failed to add stock: " + error.message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const currentStockBoxes = (stockLedger || []).filter(s => s.unit !== 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
-  const currentStockNos = (stockLedger || []).filter(s => s.unit === 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
+  // Compute stock per product
+  const getProductStock = (productId: string) => {
+    return (stockLedger || [])
+      .filter(s => s.productId === productId)
+      .reduce((acc, curr) => curr.type === "IN" ? acc + curr.qty : acc - curr.qty, 0);
+  };
 
-  const renderItem = ({ item }: { item: StockLedger }) => (
-    <View style={styles.listItem}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-        <View style={[styles.iconContainer, { backgroundColor: item.type === 'IN' ? '#DCFCE7' : '#FEE2E2' }]}>
-          <Ionicons name={item.type === 'IN' ? "arrow-down" : "arrow-up"} size={20} color={item.type === 'IN' ? "#16A34A" : "#DC2626"} />
-        </View>
+  const renderProductItem = ({ item }: { item: Product }) => {
+    const currentStock = getProductStock(item.id);
+    const isSelected = selectedProductId === item.id;
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.productCard, isSelected && styles.productCardSelected]}
+        onPress={() => setSelectedProductId(item.id)}
+      >
         <View style={{ flex: 1 }}>
-          <Text style={styles.itemName}>
-            {item.remarks 
-              ? item.remarks.replace(/\s*\(Inv:\s*[^)]+\)/g, '') 
-              : (item.type === 'IN' ? 'Stock Added' : 'Stock Removed')}
-          </Text>
-          <Text style={styles.itemDate}>{new Date(item.date).toLocaleDateString()}</Text>
+          <Text style={[styles.productName, isSelected && styles.productNameSelected]}>{item.name}</Text>
+          <Text style={styles.productUnit}>Unit: {item.unit || "Box"}</Text>
         </View>
-        <Text style={[styles.itemQty, { color: item.type === 'IN' ? "#16A34A" : "#DC2626" }]}>
-          {item.type === 'IN' ? '+' : '-'}{item.qty}
-        </Text>
-      </View>
-    </View>
-  );
+        <View style={styles.stockBadge}>
+          <Text style={styles.stockBadgeText}>{currentStock} {item.unit || "Box"}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
 
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
           <Ionicons name="menu" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add New Stock</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('dashboard')}>
+        <Text style={styles.headerTitle}>Manage Stocks</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("dashboard")}>
           <Ionicons name="speedometer-outline" size={24} color="#1F2937" />
         </TouchableOpacity>
       </View>
 
       <FlatList
-        data={[...(stockLedger || [])].reverse()} 
+        data={products || []}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        renderItem={renderProductItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
           <RefreshControl
             refreshing={isLoadingList}
-            onRefresh={() => dispatch(fetchStockLedgerFromGoogleSheets())}
+            onRefresh={() => {
+              dispatch(fetchStockLedgerFromGoogleSheets());
+              dispatch(fetchProductsFromGoogleSheets());
+            }}
           />
         }
         ListHeaderComponent={
           <View>
-            <View style={[styles.stockOverviewCard, { flexDirection: 'row', padding: 0, marginBottom: 16 }]}>
-                <View style={{ flex: 1, alignItems: 'center', paddingVertical: 22 }}>
-                  <Text style={styles.overviewLabel}>Total Boxes</Text>
-                  <Text style={[styles.overviewValue, { marginTop: 6 }]}>{currentStockBoxes}</Text>
-                </View>
-                <View style={{ width: 1.5, backgroundColor: '#4B5563', marginVertical: 16 }} />
-                <View style={{ flex: 1, alignItems: 'center', paddingVertical: 22 }}>
-                  <Text style={styles.overviewLabel}>Total Nos</Text>
-                  <Text style={[styles.overviewValue, { marginTop: 6 }]}>{currentStockNos}</Text>
-                </View>
-              </View>
-
             <View style={styles.card}>
-              <Text style={styles.sectionHeader}>Add New Stock (Boxes)</Text>
+              <Text style={styles.sectionHeader}>Add Stock</Text>
+              
+              {!selectedProductId ? (
+                <View style={styles.infoBox}>
+                  <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+                  <Text style={styles.infoText}>Select a product from the list below to add stock.</Text>
+                </View>
+              ) : (
+                <View style={styles.selectedProductBox}>
+                  <Text style={styles.selectedProductLabel}>Selected Product:</Text>
+                  <Text style={styles.selectedProductValue}>{products.find(p => p.id === selectedProductId)?.name}</Text>
+                </View>
+              )}
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Quantity Received</Text>
+                <Text style={styles.label}>Quantity</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"
                   value={qty}
                   onChangeText={setQty}
                   editable={!isSaving}
+                  placeholder="e.g. 50"
                 />
               </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Stock Unit</Text>
-                  
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <TouchableOpacity
-                    style={[styles.methodBtn, unit === 'Box' && styles.methodBtnActive]}
-                    onPress={() => setUnit('Box')}
-                  >
-                    <Ionicons name="cube-outline" size={18} color={unit === 'Box' ? '#FFF' : '#6B7280'} />
-                    <Text style={[styles.methodBtnText, unit === 'Box' && styles.methodBtnTextActive]}>Box</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.methodBtn, unit === 'Nos' && styles.methodBtnActive]}
-                    onPress={() => setUnit('Nos')}
-                  >
-                    <Ionicons name="apps-outline" size={18} color={unit === 'Nos' ? '#FFF' : '#6B7280'} />
-                    <Text style={[styles.methodBtnText, unit === 'Nos' && styles.methodBtnTextActive]}>Nos</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Remarks (Optional)</Text>
@@ -162,30 +160,26 @@ export default function AddStockScreen() {
                   value={remarks}
                   onChangeText={setRemarks}
                   editable={!isSaving}
+                  placeholder="e.g. Supplier delivery"
                 />
               </View>
 
               <TouchableOpacity
-                style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
+                style={[styles.saveButton, (isSaving || !selectedProductId) && { opacity: 0.7 }]}
                 onPress={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || !selectedProductId}
               >
                 {isSaving ? (
                   <ActivityIndicator color="#FFF" style={{ marginRight: 8 }} />
                 ) : (
                   <Ionicons name="add-circle-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
                 )}
-                <Text style={styles.saveButtonText}>
-                  {isSaving ? "Saving..." : "Add to Stock"}
-                </Text>
+                <Text style={styles.saveButtonText}>{isSaving ? "Saving..." : "Add Stock"}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.listLabel}>Stock History Ledger</Text>
+            <Text style={[styles.sectionHeader, { marginLeft: 16, marginTop: 10, marginBottom: 10 }]}>Current Stock Levels</Text>
           </View>
-        }
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No stock history found.</Text>
         }
       />
     </SafeAreaView>
@@ -193,33 +187,48 @@ export default function AddStockScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  stockOverviewCard: { backgroundColor: '#1F2937', margin: 16, marginBottom: 0, borderRadius: 12, padding: 24, alignItems: 'center' },
-  overviewLabel: { color: '#E0E7FF', fontSize: 16, fontWeight: '600', marginBottom: 8 },
-  overviewValue: { color: '#FFF', fontSize: 40, fontWeight: '800' },
-  card: { backgroundColor: '#FFF', margin: 16, borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, },
-  sectionHeader: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 16, },
-  inputGroup: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 16, color: '#111827', },
-  saveButton: { backgroundColor: '#1F2937', borderRadius: 8, padding: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', },
-  saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
-  listLabel: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginLeft: 16, marginTop: 8, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5, },
-  listItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16, marginHorizontal: 16, marginBottom: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', },
-  iconContainer: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12, },
-  itemName: { fontSize: 15, fontWeight: '600', color: '#1F2937', },
-  itemDate: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  itemQty: { fontSize: 18, fontWeight: '700' },
-  emptyText: { textAlign: 'center', color: '#9CA3AF', marginTop: 30, fontSize: 14, },
-
-  methodBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 10, borderRadius: 8,
-    borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#F9FAFB',
+  safeArea: { flex: 1, backgroundColor: "#F3F4F6" },
+  header: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 16, paddingVertical: 16, backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1, borderBottomColor: "#E5E7EB"
   },
-  methodBtnActive: { backgroundColor: '#1F2937', borderColor: '#1F2937' },
-  methodBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-  methodBtnTextActive: { color: '#FFF' },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  card: {
+    backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16,
+    marginHorizontal: 16, marginTop: 16, marginBottom: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
+  },
+  sectionHeader: { fontSize: 16, fontWeight: "700", color: "#1F2937", marginBottom: 16 },
+  infoBox: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF6FF", padding: 12, borderRadius: 8, marginBottom: 16 },
+  infoText: { marginLeft: 8, fontSize: 13, color: "#1E3A8A", flex: 1 },
+  selectedProductBox: { backgroundColor: "#F9FAFB", padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: "#E5E7EB" },
+  selectedProductLabel: { fontSize: 12, color: "#6B7280", marginBottom: 4 },
+  selectedProductValue: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 6 },
+  input: {
+    backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#D1D5DB",
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 15, color: "#111827"
+  },
+  saveButton: {
+    backgroundColor: "#1F2937", flexDirection: "row", alignItems: "center",
+    justifyContent: "center", paddingVertical: 12, borderRadius: 8, marginTop: 8
+  },
+  saveButtonText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  productCard: {
+    flexDirection: "row", alignItems: "center", backgroundColor: "#FFFFFF",
+    padding: 16, marginHorizontal: 16, marginBottom: 10, borderRadius: 12,
+    borderWidth: 1.5, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 2, elevation: 1
+  },
+  productCardSelected: { borderColor: "#1F2937", backgroundColor: "#F9FAFB" },
+  productName: { fontSize: 16, fontWeight: "600", color: "#111827", marginBottom: 4 },
+  productNameSelected: { color: "#1F2937" },
+  productUnit: { fontSize: 13, color: "#6B7280" },
+  stockBadge: { backgroundColor: "#1F2937", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  stockBadgeText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" }
 });

@@ -15,7 +15,9 @@ export interface BillItem {
   rate: number;
   amount: number;
   type: 'product' | 'labour';
-  unit?: 'Box' | 'Nos';
+  unit?: "Box" | "Nos";
+  productId?: string;
+  productName?: string;
 }
 
 
@@ -424,7 +426,9 @@ export const fetchStockLedgerFromGoogleSheets = createAsyncThunk(
         qty: Number(s.qty) || 0,
         remarks: String(s.remarks || ''),
         referenceId: s.referenceId ? String(s.referenceId) : '',
-          unit: s.unit === 'Nos' ? 'Nos' : 'Box'
+          unit: s.unit === "Nos" ? "Nos" : "Box",
+          productId: s.productId ? String(s.productId) : undefined,
+          productName: s.productName ? String(s.productName) : undefined
         })) as StockLedger[];
     } catch (error: any) {
       return rejectWithValue(error.message);

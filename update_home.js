@@ -1,57 +1,54 @@
-const fs = require('fs');
-const path = 'app/(drawer)/home/index.tsx';
-let code = fs.readFileSync(path, 'utf8');
+const fs = require("fs");
+let content = fs.readFileSync("app/(drawer)/home/index.tsx", "utf-8");
 
-const oldStockLogic = `const totalBoxesBilled = cartItems.filter(item => item.type === 'product').reduce((sum, item) => sum + Number(item.qty), 0);
-        if (totalBoxesBilled > 0) {
-          await dispatch(saveStockEntryToGoogleSheets({
-            id: Date.now().toString() + '_stock',
-            date: new Date().toISOString(),
-            type: 'OUT',
-            qty: totalBoxesBilled,
-            remarks: \`Billed: \${newBill.id}\`,
-            referenceId: newBill.id
-          }));
-        }`;
-
-const newStockLogic = `const totalBoxesBilled = cartItems.filter(item => {
-          const product = products.find(p => p.name === item.name);
-          return product?.unit !== 'Nos';
-        }).reduce((sum, item) => sum + Number(item.qty), 0);
-
-        const totalNosBilled = cartItems.filter(item => {
-          const product = products.find(p => p.name === item.name);
-          return product?.unit === 'Nos';
-        }).reduce((sum, item) => sum + Number(item.qty), 0);
-
-        if (totalBoxesBilled > 0) {
-          await dispatch(saveStockEntryToGoogleSheets({
-            id: Date.now().toString() + '_stock_box',
-            date: new Date().toISOString(),
-            type: 'OUT',
-            qty: totalBoxesBilled,
-            remarks: \`Billed: \${newBill.id} (Boxes)\`,
-            referenceId: newBill.id,
-            unit: 'Box'
-          }));
-        }
+content = content.replace(
+  /\/\/ --- STOCK VALIDATION ---[\s\S]*?(?=\/\/ Start Loading)/,
+  `// --- STOCK VALIDATION PER PRODUCT ---
+    const productItems = cartItems.filter(item => item.type === "product");
+    for (const item of productItems) {
+      // Find the product in the catalog
+      const product = availableProducts.find(p => p.name === item.name);
+      if (product) {
+        // Calculate available stock for this specific product
+        const availableStock = (stockLedger || [])
+          .filter(s => s.productId === product.id)
+          .reduce((acc, curr) => curr.type === "IN" ? acc + curr.qty : acc - curr.qty, 0);
         
-        if (totalNosBilled > 0) {
-          await dispatch(saveStockEntryToGoogleSheets({
-            id: Date.now().toString() + '_stock_nos',
-            date: new Date().toISOString(),
-            type: 'OUT',
-            qty: totalNosBilled,
-            remarks: \`Billed: \${newBill.id} (Nos)\`,
-            referenceId: newBill.id,
-            unit: 'Nos'
-          }));
-        }`;
+        const requiredQty = Number(item.qty);
+        if (requiredQty > availableStock) {
+          Alert.alert("Insufficient Stock", \`You are billing \${requiredQty} of \${product.name} but only \${availableStock} available.\`);
+          return;
+        }
+      }
+    }
 
-if (code.includes('const totalBoxesBilled = cartItems.filter(item => item.type === \'product\')')) {
-    code = code.replace(oldStockLogic, newStockLogic);
-    fs.writeFileSync(path, code, 'utf8');
-    console.log('Updated home stock deduction');
-} else {
-    console.log('Already updated or could not find old logic in home');
-}
+    `
+);
+
+content = content.replace(
+  /\/\/ 2\. Deduct stock by unit type[\s\S]*?(?=\/\/ STOP LOADING IMMEDIATELY!)/,
+  `// 2. Deduct stock per product
+      productItems.forEach((item, index) => {
+        const product = availableProducts.find(p => p.name === item.name);
+        if (product) {
+          // Stagger dispatches slightly to avoid rate limits
+          setTimeout(() => {
+            dispatch(saveStockEntryToGoogleSheets({
+              id: Date.now().toString() + "_" + index,
+              date: new Date().toISOString(),
+              type: "OUT",
+              qty: Number(item.qty),
+              remarks: \`Billed to \${newBill.customerName}\`,
+              referenceId: newBill.id,
+              unit: product.unit || "Box",
+              productId: product.id,
+              productName: product.name
+            })).unwrap().catch(e => console.warn("Stock deduct failed:", e));
+          }, index * 60);
+        }
+      });
+      
+      `
+);
+
+fs.writeFileSync("app/(drawer)/home/index.tsx", content);

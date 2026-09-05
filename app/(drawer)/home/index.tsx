@@ -199,18 +199,23 @@ export default function BillingScreen() {
       return;
     }
 
-    // --- STOCK VALIDATION ---
-    const requiredBoxes = cartItems.filter(item => item.type === 'product' && (item as any).unit !== 'Nos').reduce((sum, item) => sum + Number(item.qty), 0);
-    const requiredNos = cartItems.filter(item => item.type === 'product' && (item as any).unit === 'Nos').reduce((sum, item) => sum + Number(item.qty), 0);
-    const availableBoxes = (stockLedger || []).filter(s => s.unit !== 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
-    const availableNos = (stockLedger || []).filter(s => s.unit === 'Nos').reduce((acc, curr) => curr.type === 'IN' ? acc + curr.qty : acc - curr.qty, 0);
-    if (requiredBoxes > availableBoxes) {
-      Alert.alert('Insufficient Stock', `You are billing ${requiredBoxes} Boxes but only ${availableBoxes} available.`);
-      return;
-    }
-    if (requiredNos > availableNos) {
-      Alert.alert('Insufficient Stock', `You are billing ${requiredNos} Nos but only ${availableNos} available.`);
-      return;
+    // --- STOCK VALIDATION PER PRODUCT ---
+    const productItems = cartItems.filter(item => item.type === "product");
+    for (const item of productItems) {
+      // Find the product in the catalog
+      const product = availableProducts.find(p => p.name === item.name);
+      if (product) {
+        // Calculate available stock for this specific product
+        const availableStock = (stockLedger || [])
+          .filter(s => s.productId === product.id)
+          .reduce((acc, curr) => curr.type === "IN" ? acc + curr.qty : acc - curr.qty, 0);
+        
+        const requiredQty = Number(item.qty);
+        if (requiredQty > availableStock) {
+          Alert.alert("Insufficient Stock", `You are billing ${requiredQty} of ${product.name} but only ${availableStock} available.`);
+          return;
+        }
+      }
     }
 
     // Start Loading
@@ -250,19 +255,26 @@ export default function BillingScreen() {
       // 1. Save to Google Sheets
       await dispatch(saveBillToGoogleSheets(newBill)).unwrap();
 
-      // 2. Deduct stock by unit type
-      const totalBoxesBilled = requiredBoxes;
-      const totalNosBilled = requiredNos;
-      if (totalBoxesBilled > 0) {
-        dispatch(saveStockEntryToGoogleSheets({ id: Date.now().toString() + '_box', date: new Date().toISOString(), type: 'OUT', qty: totalBoxesBilled, remarks: `Billed to ${newBill.customerName} (Boxes)`, referenceId: newBill.id, unit: 'Box' })).unwrap().catch(e => console.warn('Stock deduct failed:', e));
-      }
-      if (totalNosBilled > 0) {
-        setTimeout(() => {
-          dispatch(saveStockEntryToGoogleSheets({ id: Date.now().toString() + '_nos', date: new Date().toISOString(), type: 'OUT', qty: totalNosBilled, remarks: `Billed to ${newBill.customerName} (Nos)`, referenceId: newBill.id, unit: 'Nos' })).unwrap().catch(e => console.warn('Stock deduct failed:', e));
-        }, 60);
-      }
-
-
+      // 2. Deduct stock per product
+      productItems.forEach((item, index) => {
+        const product = availableProducts.find(p => p.name === item.name);
+        if (product) {
+          // Stagger dispatches slightly to avoid rate limits
+          setTimeout(() => {
+            dispatch(saveStockEntryToGoogleSheets({
+              id: Date.now().toString() + "_" + index,
+              date: new Date().toISOString(),
+              type: "OUT",
+              qty: Number(item.qty),
+              remarks: `Billed to ${newBill.customerName}`,
+              referenceId: newBill.id,
+              unit: product.unit || "Box",
+              productId: product.id,
+              productName: product.name
+            })).unwrap().catch(e => console.warn("Stock deduct failed:", e));
+          }, index * 60);
+        }
+      });
       
       // STOP LOADING IMMEDIATELY! (Fixes the print dialog freeze)
       setIsSaving(false);
