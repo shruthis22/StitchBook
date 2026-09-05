@@ -12,6 +12,8 @@ import { Customer, fetchCustomersFromGoogleSheets, saveCustomerToGoogleSheets, d
 export default function AddCustomerScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [managerName, setManagerName] = useState('');
+  const [managerPhone, setManagerPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const { customers, status } = useSelector((state: RootState) => state.billing);
@@ -38,12 +40,22 @@ export default function AddCustomerScreen() {
       }
     }
 
+    if (managerPhone) {
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(managerPhone)) {
+        Alert.alert('Invalid Phone', 'Please enter a valid 10-digit mobile number for manager.');
+        return;
+      }
+    }
+
     setIsSaving(true);
 
     const newCustomer: Customer = {
       id: Date.now().toString(),
       name,
-      phone
+      phone,
+      managerName,
+      managerPhone
     };
 
     try {
@@ -51,6 +63,8 @@ export default function AddCustomerScreen() {
       ToastAndroid.show('Customer added', ToastAndroid.SHORT);
       setName('');
       setPhone('');
+      setManagerName('');
+      setManagerPhone('');
     } catch (error: any) {
       Alert.alert('Error', 'Failed to save customer: ' + error.message);
     } finally {
@@ -89,6 +103,11 @@ export default function AddCustomerScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.itemName}>{item.name}</Text>
           {item.phone ? <Text style={styles.itemPhone}>{item.phone}</Text> : null}
+          {item.managerName ? (
+            <Text style={[styles.itemPhone, { marginTop: 2, color: '#4B5563' }]}>
+              Manager: {item.managerName} {item.managerPhone ? `(${item.managerPhone})` : ''}
+            </Text>
+          ) : null}
         </View>
       </View>
 
@@ -150,6 +169,28 @@ export default function AddCustomerScreen() {
                   maxLength={10}
                   value={phone}
                   onChangeText={setPhone}
+                  editable={!isSaving}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Manager Name (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={managerName}
+                  onChangeText={setManagerName}
+                  editable={!isSaving}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Manager Phone (Optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={managerPhone}
+                  onChangeText={setManagerPhone}
                   editable={!isSaving}
                 />
               </View>
