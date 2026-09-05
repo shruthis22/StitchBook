@@ -54,7 +54,7 @@ export default function PartiesScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {stats.totalPending > 0 ? (
               <View style={styles.pendingBadge}>
-                <Text style={styles.pendingBadgeText}>₹{stats.totalPending.toFixed(0)} due</Text>
+                <Text style={styles.pendingBadgeText}>₹{stats.totalPending.toLocaleString('en-IN')} due</Text>
               </View>
             ) : stats.billCount > 0 ? (
               <View style={styles.paidBadge}>

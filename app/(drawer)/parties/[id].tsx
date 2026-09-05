@@ -98,10 +98,10 @@ export default function PartyDetailScreen() {
             </View>
           </View>
           <View style={styles.billAmounts}>
-            <Text style={styles.billedAmt}>₹{billed.toFixed(0)}</Text>
+            <Text style={styles.billedAmt}>₹{billed.toLocaleString('en-IN')}</Text>
             <View style={[styles.statusBadge, { backgroundColor: isPaid ? '#F0FDF4' : '#FEF2F2' }]}>
               <Text style={[styles.statusText, { color: isPaid ? '#16A34A' : '#EF4444' }]}>
-                {isPaid ? 'Paid' : `₹${pending.toFixed(0)} due`}
+                {isPaid ? 'Paid' : `₹${pending.toLocaleString('en-IN')} due`}
               </Text>
             </View>
           </View>
@@ -129,17 +129,17 @@ export default function PartyDetailScreen() {
         <View style={styles.summaryContainer}>
           <View style={[styles.summaryCard, { backgroundColor: '#EFF6FF', borderColor: '#93C5FD' }]}>
             <Ionicons name="receipt-outline" size={22} color="#3B82F6" />
-            <Text style={styles.summaryValue}>₹{totalBilled.toFixed(0)}</Text>
+            <Text style={styles.summaryValue}>₹{totalBilled.toLocaleString('en-IN')}</Text>
             <Text style={styles.summaryLabel}>Total Billed</Text>
           </View>
           <View style={[styles.summaryCard, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }]}>
             <Ionicons name="checkmark-circle-outline" size={22} color="#16A34A" />
-            <Text style={styles.summaryValue}>₹{totalPaid.toFixed(0)}</Text>
+            <Text style={styles.summaryValue}>₹{totalPaid.toLocaleString('en-IN')}</Text>
             <Text style={styles.summaryLabel}>Total Paid</Text>
           </View>
           <View style={[styles.summaryCard, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}>
             <Ionicons name="time-outline" size={22} color="#EF4444" />
-            <Text style={styles.summaryValue}>₹{totalPending.toFixed(0)}</Text>
+            <Text style={styles.summaryValue}>₹{totalPending.toLocaleString('en-IN')}</Text>
             <Text style={styles.summaryLabel}>Pending</Text>
           </View>
         </View>
