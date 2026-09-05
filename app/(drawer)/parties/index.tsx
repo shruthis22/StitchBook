@@ -50,8 +50,8 @@ export default function PartiesScreen() {
           <View style={styles.avatar}>
             <Ionicons name="business-outline" size={20} color="#1F2937" />
           </View>
-          <View>
-            <Text style={styles.partyName}>{item.name}</Text>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={styles.partyName} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.partyPhone}>{item.phone || 'No phone'}</Text>
             <Text style={styles.billCount}>{stats.billCount} bill{stats.billCount !== 1 ? 's' : ''}</Text>
           </View>
