@@ -148,7 +148,7 @@ export const fetchProductsFromGoogleSheets = createAsyncThunk(
         id: String(p.id),
         name: String(p.name),
         price: String(p.price),
-          unit: p.unit === 'Nos' ? 'Nos' : 'Box'
+          unit: (() => { const BOX_PRODUCTS = ["rex prime","rex 90","sun 90"]; return BOX_PRODUCTS.includes(String(p.name).toLowerCase().trim()) ? "Box" : "Nos"; })()
         })) as Product[];
     } catch (error: any) {
       return rejectWithValue(error.message);

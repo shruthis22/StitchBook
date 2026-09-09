@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { printPartyLedger } from '../../../utils/printPartyLedger';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView
 } from 'react-native';
@@ -21,6 +23,67 @@ export default function PartyDetailScreen() {
   const [showModal, setShowModal] = useState(false);
   const [oldBalance, setOldBalance] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Ledger date range state
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateLedger = async () => {
+    if (!fromDate || !toDate) {
+      Alert.alert("Select Dates", "Please select both From and To dates.");
+      return;
+    }
+    if (fromDate > toDate) {
+      Alert.alert("Invalid Range", "From date must be before To date.");
+      return;
+    }
+
+    // Normalize to YYYY-MM-DD string to avoid timezone issues
+    const toDateOnly = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+    const parseBillDate = (dateStr: string): string => {
+      // Try standard ISO / JS parse first
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        // Avoid UTC-midnight timezone shift: re-parse day/month/year from string if it looks like a locale string
+        const months: Record<string,string> = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+        const parts = dateStr.trim().split(/[\s,]+/);
+        if (parts.length >= 3 && isNaN(Number(parts[1]))) {
+          // "9 Sep 2026" or "Sep 9, 2026" formats
+          const mon = months[parts[1].toLowerCase().slice(0,3)];
+          if (mon) return `${parts[2]}-${mon}-${String(parts[0]).padStart(2,'0')}`;
+        }
+        return toDateOnly(d);
+      }
+      return dateStr;
+    };
+
+    const fromStr = toDateOnly(fromDate!);
+    const toStr = toDateOnly(toDate!);
+
+    const filteredBills = partyBills.filter(b => {
+      const bStr = parseBillDate(b.date);
+      return bStr >= fromStr && bStr <= toStr;
+    });
+
+    if (filteredBills.length === 0) {
+      Alert.alert('No Bills', `No bills found between ${fromStr} and ${toStr}.`);
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      await printPartyLedger({ partyName: name as string, fromDate, toDate, bills: filteredBills });
+    } catch (e: any) {
+      Alert.alert("Error", "Failed to generate ledger: " + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleSaveOldBalance = async () => {
     const numAmt = parseFloat(oldBalance);
@@ -81,7 +144,7 @@ export default function PartyDetailScreen() {
     return (
       <TouchableOpacity
         style={styles.billCard}
-        onPress={() => router.push({ pathname: '/(drawer)/history/[id]', params: { id: item.id } })}
+        onPress={() => router.push({ pathname: '/(drawer)/parties/bill-detail', params: { id: item.id } })}
         activeOpacity={0.7}
       >
         <View style={styles.billRow}>
@@ -145,6 +208,53 @@ export default function PartyDetailScreen() {
         </View>
 
         
+        {/* Ledger Date Range */}
+        <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#1F2937", marginBottom: 10 }}>Generate Party Ledger</Text>
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+            <TouchableOpacity
+              style={styles.dateBtn}
+              onPress={() => setShowFromPicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#1F2937" style={{ marginRight: 6 }} />
+              <Text style={styles.dateBtnText}>{fromDate ? fromDate.toLocaleDateString("en-GB") : "From Date"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dateBtn}
+              onPress={() => setShowToPicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#1F2937" style={{ marginRight: 6 }} />
+              <Text style={styles.dateBtnText}>{toDate ? toDate.toLocaleDateString("en-GB") : "To Date"}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.oldBalanceBtn, { backgroundColor: fromDate && toDate ? "#1F2937" : "#9CA3AF" }]}
+            onPress={handleGenerateLedger}
+            disabled={!fromDate || !toDate || isGenerating}
+          >
+            {isGenerating ? <ActivityIndicator color="#FFF" style={{ marginRight: 8 }} /> : <Ionicons name="document-text-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />}
+            <Text style={styles.oldBalanceBtnText}>{isGenerating ? "Generating..." : "Generate Ledger"}</Text>
+          </TouchableOpacity>
+
+          {showFromPicker && (
+            <DateTimePicker
+              value={fromDate || new Date()}
+              mode="date"
+              display="calendar"
+              onChange={(_, date) => { setShowFromPicker(false); if (date) setFromDate(date); }}
+            />
+          )}
+          {showToPicker && (
+            <DateTimePicker
+              value={toDate || new Date()}
+              mode="date"
+              display="calendar"
+              onChange={(_, date) => { setShowToPicker(false); if (date) setToDate(date); }}
+            />
+          )}
+        </View>
+
         {/* Add Old Balance Button */}
         <TouchableOpacity
           style={styles.oldBalanceBtn}
@@ -253,6 +363,12 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 60, gap: 10 },
   emptyText: { fontSize: 14, color: '#9CA3AF' },
 
+  dateBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#D1D5DB",
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10,
+  },
+  dateBtnText: { fontSize: 13, color: "#374151", fontWeight: "500" },
   oldBalanceBtn: {
     backgroundColor: "#1F2937",
     marginHorizontal: 16,
