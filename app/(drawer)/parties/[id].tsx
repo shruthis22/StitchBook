@@ -41,24 +41,26 @@ export default function PartyDetailScreen() {
       return;
     }
 
-    // Normalize to YYYY-MM-DD string to avoid timezone issues
+    // Normalize to YYYY-MM-DD string to avoid timezone + Hermes issues
     const toDateOnly = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
     const parseBillDate = (dateStr: string): string => {
-      // Try standard ISO / JS parse first
-      const d = new Date(dateStr);
-      if (!isNaN(d.getTime())) {
-        // Avoid UTC-midnight timezone shift: re-parse day/month/year from string if it looks like a locale string
-        const months: Record<string,string> = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
-        const parts = dateStr.trim().split(/[\s,]+/);
-        if (parts.length >= 3 && isNaN(Number(parts[1]))) {
-          // "9 Sep 2026" or "Sep 9, 2026" formats
-          const mon = months[parts[1].toLowerCase().slice(0,3)];
-          if (mon) return `${parts[2]}-${mon}-${String(parts[0]).padStart(2,'0')}`;
-        }
-        return toDateOnly(d);
+      const months: Record<string,string> = {
+        jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
+        jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'
+      };
+      // Handle "9 Sep 2026", "9 Sept 2026", "09 September 2026" etc.
+      const parts = dateStr.trim().split(/[\s,]+/);
+      if (parts.length >= 3) {
+        const day = String(parts[0]).padStart(2,'0');
+        const mon = months[parts[1].toLowerCase().slice(0,3)];
+        const yr = parts[2];
+        if (mon && yr.length === 4) return `${yr}-${mon}-${day}`;
       }
+      // Fallback: ISO or standard JS parse
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) return toDateOnly(d);
       return dateStr;
     };
 
@@ -77,7 +79,7 @@ export default function PartyDetailScreen() {
 
     setIsGenerating(true);
     try {
-      await printPartyLedger({ partyName: name as string, fromDate, toDate, bills: filteredBills });
+      await printPartyLedger({ partyName: name as string, partyPhone, fromDate: fromDate!, toDate: toDate!, bills: filteredBills });
     } catch (e: any) {
       Alert.alert("Error", "Failed to generate ledger: " + e.message);
     } finally {
@@ -122,11 +124,16 @@ export default function PartyDetailScreen() {
     }
   };
 
-  const { bills } = useSelector((state: RootState) => state.billing);
+  const { bills, customers } = useSelector((state: RootState) => state.billing);
 
   const partyBills = bills.filter(
     b => b.customerName?.trim().toLowerCase() === (name as string).trim().toLowerCase()
   );
+
+  const matchedCustomer = (customers || []).find(
+    c => c.name?.trim().toLowerCase() === (name as string).trim().toLowerCase()
+  );
+  const partyPhone = matchedCustomer?.phone || '';
 
   // Totals
   const totalBilled = partyBills.reduce((s, b) => s + (Number(b.grandTotal) || Number(b.amount) || 0), 0);
