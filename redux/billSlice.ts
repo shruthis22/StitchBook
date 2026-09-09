@@ -202,6 +202,16 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
           parsedItems = [];
         }
 
+        // FIX: Assign correct unit based on product name for old bills
+        const BOX_PRODUCTS = ['rex prime', 'rex 90', 'sun 90'];
+        if (Array.isArray(parsedItems)) {
+          parsedItems = parsedItems.map(item => {
+             const nameStr = (item.name || '').trim().toLowerCase();
+             const isBox = BOX_PRODUCTS.includes(nameStr);
+             return { ...item, unit: isBox ? 'Box' : 'Nos' };
+          });
+        }
+
         let parsedHistory: { date: string; amount: number; method?: 'Cash' | 'Online' }[] = [];
         try {
           if (typeof b.paymentHistory === 'string') {
