@@ -115,10 +115,11 @@ export const printPartyLedger = async ({ partyName, partyPhone, fromDate, toDate
   }
   .col-left { width: 33%; font-size: 10.5px; line-height: 1.6; color: #164f79; }
   .col-left strong { font-size: 11px; }
-  .col-center { width: 34%; text-align: center; }
+  .col-center { width: 34%; text-align: center; display: flex; flex-direction: column; align-items: center; }
   .col-right { width: 33%; font-size: 11px; line-height: 1.6; color: #164f79; text-align: right; }
-  .logo { width: 64px; height: 64px; object-fit: contain; margin-bottom: 4px; }
-  .company-name { font-size: 18px; font-weight: bold; color: #164f79; letter-spacing: 1px; }
+  .rhombus-container { width: 65px; height: 65px; transform: rotate(45deg); background-color: #000; overflow: hidden; position: relative; border-radius: 4px; flex-shrink: 0; margin-bottom: 12px; }
+  .header-logo { width: 95px; height: 95px; transform: rotate(-45deg); position: absolute; top: 50%; left: 50%; margin-top: -47.5px; margin-left: -47.5px; object-fit: cover; }
+  .company-name { font-size: 20px; font-weight: bold; color: #164f79; text-shadow: 1px 1px 0px #fff, 1px 1px 2px rgba(0,0,0,0.2); }
   .icon-row { display: flex; align-items: flex-start; margin-top: 4px; }
   .icon-row svg { margin-right: 5px; margin-top: 1px; flex-shrink: 0; }
 
@@ -169,7 +170,9 @@ export const printPartyLedger = async ({ partyName, partyPhone, fromDate, toDate
 
   <!-- CENTER: Logo & Name -->
   <div class="col-center">
-    <img src="${logoBase64}" class="logo" />
+    <div class="rhombus-container">
+      <img src="${logoBase64}" class="header-logo" />
+    </div>
     <div class="company-name">S.S. &amp; CO EXPLOSIVES</div>
   </div>
 
