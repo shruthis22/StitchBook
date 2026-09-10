@@ -126,14 +126,20 @@ const safeFetch = async (url: string, options: RequestInit = {}, timeout = 15000
 };
 
 // --- Helper: Deep Sanitization ---
-const sanitizeBillItem = (item: any): BillItem => ({
-  id: String(item?.id || Math.random().toString(36).substr(2, 9)),
-  name: String(item?.name || 'Unknown Item'),
-  qty: Number(item?.qty) || 0,
-  rate: Number(item?.rate) || 0,
-  amount: Number(item?.amount) || 0,
-  type: (item?.type === 'product' || item?.type === 'labour') ? item.type : 'product',
-});
+const sanitizeBillItem = (item: any): BillItem => {
+  const name = String(item?.name || 'Unknown Item');
+  const n = name.trim().toLowerCase();
+  const isBox = n.includes('rex prime') || n.includes('rex 90') || n.includes('sun 90');
+  return {
+    id: String(item?.id || Math.random().toString(36).substr(2, 9)),
+    name,
+    qty: Number(item?.qty) || 0,
+    rate: Number(item?.rate) || 0,
+    amount: Number(item?.amount) || 0,
+    type: (item?.type === 'product' || item?.type === 'labour') ? item.type : 'product',
+    unit: item?.type === 'labour' ? undefined : (isBox ? 'Box' : 'Nos'),
+  } as BillItem;
+};
 
 // Fetch Products (GET ?type=products)
 export const fetchProductsFromGoogleSheets = createAsyncThunk(
