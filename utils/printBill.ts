@@ -253,7 +253,7 @@ body {
 
 /* GRID AREA */
 .items-area { flex: 1; display: flex; flex-direction: column; }
-.grid { display: grid; grid-template-columns: 45px 1fr 70px 90px 110px; }
+.grid { display: grid; grid-template-columns: 45px 1fr 100px 90px 110px; }
 .grid.header-row { font-weight: bold; border: 2px solid #000; background: #f2f2f2; }
 .cell { padding: 8px; border-right: 1px solid #000; border-bottom: 1px solid #000; }
 .cell:last-child { border-right: none; }
@@ -262,7 +262,7 @@ body {
 .row { border-left: 2px solid #000; border-right: 2px solid #000; }
 
 .filler {
-    flex: 1; display: grid; grid-template-columns: 45px 1fr 70px 90px 110px;
+    flex: 1; display: grid; grid-template-columns: 45px 1fr 100px 90px 110px;
     border-left: 2px solid #000; border-right: 2px solid #000; border-bottom: 2px solid #000;
 }
 .filler div { border-right: 1px solid #000; }
