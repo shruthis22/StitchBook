@@ -148,8 +148,8 @@ export default function BillingScreen() {
       return;
     }
 
-    const BOX_PRODUCTS = ['rex prime', 'rex 90', 'sun 90'];
-    const isBox = BOX_PRODUCTS.includes(productName.trim().toLowerCase());
+    const n = productName.trim().toLowerCase();
+    const isBox = n.includes('rex prime') || n.includes('rex 90') || n.includes('sun 90');
 
     const newItem = {
       id: Date.now().toString(),

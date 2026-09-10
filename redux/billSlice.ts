@@ -148,7 +148,7 @@ export const fetchProductsFromGoogleSheets = createAsyncThunk(
         id: String(p.id),
         name: String(p.name),
         price: String(p.price),
-          unit: (() => { const BOX_PRODUCTS = ["rex prime","rex 90","sun 90"]; return BOX_PRODUCTS.includes(String(p.name).toLowerCase().trim()) ? "Box" : "Nos"; })()
+          unit: (() => { const n = String(p.name).toLowerCase().trim(); return (n.includes('rex prime') || n.includes('rex 90') || n.includes('sun 90')) ? "Box" : "Nos"; })()
         })) as Product[];
     } catch (error: any) {
       return rejectWithValue(error.message);
@@ -203,11 +203,10 @@ export const fetchBillsFromGoogleSheets = createAsyncThunk(
         }
 
         // FIX: Assign correct unit based on product name for old bills
-        const BOX_PRODUCTS = ['rex prime', 'rex 90', 'sun 90'];
         if (Array.isArray(parsedItems)) {
           parsedItems = parsedItems.map(item => {
              const nameStr = (item.name || '').trim().toLowerCase();
-             const isBox = BOX_PRODUCTS.includes(nameStr);
+             const isBox = nameStr.includes('rex prime') || nameStr.includes('rex 90') || nameStr.includes('sun 90');
              return { ...item, unit: isBox ? 'Box' : 'Nos' };
           });
         }
